@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ page.title }}</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --bg-light: #1e1e1e;
+      --fg: #e0e0e0;
+      --border: #333;
+      --highlight: #1a1a1a;
+      --link: #8ab4f8;
+      --accent: #252525;
+    }
+
+    body {
+      display: flex;
+      font-family: sans-serif;
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--fg);
+    }
+
+    aside {
+      width: 250px;
+      padding: 1rem;
+      background-color: var(--bg-light);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    aside ul#chat-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    aside ul#chat-list li {
+      margin-bottom: 0.5rem;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      height: 100vh;
+      box-sizing: border-box;
+      background-color: var(--bg);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    details {
+      margin-bottom: 1rem;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: var(--highlight);
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+      background-color: var(--accent);
+      padding: 0.5rem 1rem;
+      user-select: none;
+    }
+
+    .chat-msg-box {
+      padding: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .question-box {
+      margin-right: auto;
+    }
+
+    .answer-box {
+      margin-left: auto;
+    }
+
+    /* alignment */
+    .question-align {
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .answer-align {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* Section headers inside aside */
+    aside h3 {
+      margin: 1rem 0 0.5rem 0;
+      font-weight: bold;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      color: var(--link);
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h2>Chats</h2>
+    <ul id="chat-list">
+      {% assign chats_sorted = site.chats | sort: 'date' | reverse %}
+      {% for chat in chats_sorted %}
+        <li data-date="{{ chat.date | date: '%Y-%m-%d' }}">
+          <a href="{{ chat.url }}">{{ chat.title }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <main>
+    <h1>{{ page.title }}</h1>
+    <div id="chat-container">
+      {{ content }}
+    </div>
+  </main>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Group chat messages into Q&A pairs
+    const container = document.getElementById("chat-container");
+    const rawMessages = [...container.querySelectorAll(".chat-msg")];
+    container.innerHTML = ""; // Clear raw messages
+
+    for (let i = 0; i < rawMessages.length; i += 2) {
+      const q = rawMessages[i];
+      const a = rawMessages[i + 1];
+      const qText = q?.textContent?.trim();
+      const aText = a?.textContent?.trim();
+
+      if (!qText && !aText) continue;
+
+      const row = document.createElement("div");
+      row.className = "chat-row";
+
+      if (qText) {
+        const qDetails = document.createElement("details");
+        qDetails.className = "half-box";
+        const qSummary = document.createElement("summary");
+        qSummary.textContent = qText.slice(0, 100);
+        const qBox = document.createElement("div");
+        qBox.className = "chat-msg-box question-box";
+        qBox.innerHTML = q.innerHTML;
+        qDetails.appendChild(qSummary);
+        qDetails.appendChild(qBox);
+        row.appendChild(qDetails);
+      }
+
+      if (aText) {
+        const aDetails = document.createElement("details");
+        aDetails.className = "half-box";
+        const aSummary = document.createElement("summary");
+        aSummary.textContent = aText.slice(0, 100);
+        const aBox = document.createElement("div");
+        aBox.className = "chat-msg-box answer-box";
+        aBox.innerHTML = a.innerHTML;
+        aDetails.appendChild(aSummary);
+        aDetails.appendChild(aBox);
+        row.appendChild(aDetails);
+      }
+
+      container.appendChild(row);
+    }
+
+    // Group and sort chats on the left panel
+    function groupChats() {
+      const list = document.getElementById('chat-list');
+      const items = Array.from(list.querySelectorAll('li'));
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      const sections = {
+        today: [],
+        yesterday: [],
+        last7: [],
+        last30: [],
+        months: {}, // { "January": [...], ... }
+        years: {}   // { "2024": [...], ... }
+      };
+
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+
+      items.forEach(item => {
+        const dateStr = item.getAttribute('data-date');
+        if (!dateStr) return;
+
+        const date = new Date(dateStr + 'T00:00:00');
+        const diffMs = now - date;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const year = date.getFullYear();
+        const monthName = monthNames[date.getMonth()];
+
+        if (diffDays === 0) {
+          sections.today.push(item);
+        } else if (diffDays === 1) {
+          sections.yesterday.push(item);
+        } else if (diffDays <= 7) {
+          sections.last7.push(item);
+        } else if (diffDays <= 30) {
+          sections.last30.push(item);
+        } else if (year === currentYear) {
+          if (!sections.months[monthName]) sections.months[monthName] = [];
+          sections.months[monthName].push(item);
+        } else {
+          if (!sections.years[year]) sections.years[year] = [];
+          sections.years[year].push(item);
+        }
+      });
+
+      // Clear the list to rebuild
+      list.innerHTML = '';
+
+      function appendSection(title, items) {
+        if (!items.length) return;
+        const header = document.createElement('h3');
+        header.textContent = title;
+        list.appendChild(header);
+        items.forEach(i => list.appendChild(i));
+      }
+
+      appendSection('Today', sections.today);
+      appendSection('Yesterday', sections.yesterday);
+      appendSection('Last 7 days', sections.last7);
+      appendSection('Last 30 days', sections.last30);
+
+      // Append months in calendar order
+      monthNames.forEach(month => {
+        if (sections.months[month]) {
+          appendSection(month, sections.months[month]);
+        }
+      });
+
+      // Append years in descending order
+      Object.keys(sections.years)
+        .sort((a, b) => b - a)
+        .forEach(year => {
+          appendSection(year, sections.years[year]);
+        });
+    }
+
+    groupChats();
+  });
+</script>
+
+</body>
+</html>
