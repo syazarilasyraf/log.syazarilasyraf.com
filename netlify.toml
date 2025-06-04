@@ -1,0 +1,7 @@
+[build]
+  command = "bundle install --path vendor/bundle && bundle exec jekyll build"
+  publish = "_site"
+
+[build.environment]
+  BUNDLE_PATH = "vendor/bundle"
+  RUBY_VERSION = "3.2.2"
