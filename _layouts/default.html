@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>log</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --bg-light: #1e1e1e;
+      --fg: #e0e0e0;
+      --border: #333;
+      --highlight: #1a1a1a;
+      --link: #8ab4f8;
+      --accent: #252525;
+    }
+
+    body {
+      display: flex;
+      font-family: sans-serif;
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--fg);
+    }
+
+    aside {
+      width: 250px;
+      padding: 1rem;
+      background-color: var(--bg-light);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    aside ul#chat-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    aside ul#chat-list li {
+      margin-bottom: 0.5rem;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      height: 100vh;
+      box-sizing: border-box;
+      background-color: var(--bg);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    details {
+      margin-bottom: 1rem;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background-color: var(--highlight);
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+      background-color: var(--accent);
+      padding: 0.5rem 1rem;
+      user-select: none;
+    }
+
+    .chat-msg-box {
+      padding: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .question-box {
+      margin-right: auto;
+    }
+
+    .answer-box {
+      margin-left: auto;
+    }
+
+    .question-align {
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .answer-align {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    aside h3 {
+      margin: 1rem 0 0.5rem 0;
+      font-weight: bold;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+      color: var(--link);
+    }
+
+    #chatList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    }
+
+    .chat-entry {
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 2px 0;
+    }
+
+    .chat-entry:hover {
+    background-color: #f0f0f0;
+    }
+
+    aside h3 {
+    margin-top: 12px;
+    margin-bottom: 4px;
+    }
+
+    .intro-box {
+    background-color: var(--bg-light);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    border: 1px solid var(--border);
+    color: var(--fg);
+    }
+
+    .intro-box code {
+    background: var(--highlight);
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: var(--link);
+    }
+
+    .intro-box a {
+    color: var(--link);
+    text-decoration: underline;
+    }
+
+    .upload-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    }
+
+    .upload-btn {
+    background-color: var(--link);
+    color: black;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: bold;
+    display: inline-block;
+    transition: background-color 0.2s;
+    }
+
+    .upload-btn:hover {
+    background-color: #5a9cf0;
+    }
+
+    .delete-btn {
+    background: transparent;
+    color: #ff6666;
+    border: 1px solid #ff6666;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    }
+
+    .delete-btn:hover {
+    background-color: rgba(255, 102, 102, 0.1);
+    }
+
+  </style>
+
+</head>
+<body>
+
+    <aside>
+    <h2>Chats</h2>
+        <div id="chatList"></div>
+    </aside>
+
+<main>
+  <h1>📥 Import ChatGPT Conversations</h1>
+
+  <div class="intro-box">
+    <p>Upload your exported <code>conversations.json</code> file from ChatGPT or Markdown files exported using the <a href='https://chromewebstore.google.com/detail/exportgpt-export-chatgpt/jamcijfplmgbngnppdhmbbogjebgfimn'>Export ChatGPT Chrome extension</a>.</p>
+    <p>You can add multiple files. Everything is stored in your browser only (via <code>localStorage</code>).</p>
+    <p>Source: <a href="https://github.com/syazarilasyraf/log.syazarilasyraf.com">Github</a></p>
+  </div>
+
+  <div class="upload-controls">
+    <label class="upload-btn">
+      📂 Choose Files
+      <input type="file" id="fileInput" accept=".json,.md" multiple hidden>
+    </label>
+    <button onclick="clearAllChats()" class="delete-btn">🗑️ Delete All</button>
+  </div>
+
+  <section id="chatContainer" class="chat-container"></section>
+</main>
+
+  <script src="/assets/js/chat-uploader.js"></script>
+</body>
+</html>

@@ -31,7 +31,7 @@ This project takes:
 
 ### 2. Processing uploaded markdown files (`process_uploads.rb`)
 
-- Designed for markdown files exported with the [Export ChatGPT extension](https://chrome.google.com/webstore/detail/export-chatgpt-conversati/jbcjblbmpogicdngjgfcnflicjacbkeh)
+- Designed for markdown files exported with the [Export ChatGPT extension](https://chromewebstore.google.com/detail/exportgpt-export-chatgpt/jamcijfplmgbngnppdhmbbogjebgfimn)
 - Reads `.md` files in the `upload/` folder
 - Parses each message section based on roles (`**You:**` / `**ChatGPT:**`)
 - Converts them to structured HTML `<div class="chat-msg" data-role="...">`
