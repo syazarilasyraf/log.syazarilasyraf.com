@@ -102,132 +102,106 @@ function renderChatList() {
   }
 }
 
-// 👇 NEW version of displayChat()
 function displayChat(index) {
   const chats = getStoredChats();
   const chat = chats[index];
-  const chatContainer = document.getElementById('chatContainer');
-  chatContainer.innerHTML = '';
+  const container = document.getElementById('chatContainer');
+  container.innerHTML = '';
 
-  const details = document.createElement('details');
-  const summary = document.createElement('summary');
-  summary.textContent = chat.title || `Chat ${index + 1}`;
+  const metadata = {
+    chatGPT_conversation_id: chat.id || `chat-${index}`,
+    chatGPT_conversation_title: chat.title || `Chat ${index + 1}`,
+    chatGPT_create_time: chat.createdAt || new Date().toISOString(),
+    chatGPT_update_time: chat.updatedAt || new Date().toISOString(),
+    chatGPT_converted_time: new Date().toISOString(),
+    chatGPT_first_message_time: chat.messages?.[0]?.createdAt || '',
+    chatGPT_last_message_time: chat.messages?.[chat.messages.length - 1]?.createdAt || '',
+    chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))] || [],
+  };
 
-  const content = document.createElement('div');
-  content.classList.add('chat-content');
-
-  if (chat.messages) {
-    chat.messages.forEach(message => {
-      const role = document.createElement('div');
-      role.className = `message ${message.role}`;
-      role.innerHTML = `<strong>${message.role}:</strong> ${formatMessageContent(message.content)}`;
-      content.appendChild(role);
-    });
-  } else if (chat.content) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(chat.content, 'text/html');
-    const rawMessages = [...doc.querySelectorAll('.chat-msg')];
-
-    for (let i = 0; i < rawMessages.length; i += 2) {
-      const q = rawMessages[i];
-      const a = rawMessages[i + 1];
-      const qText = q?.textContent?.trim();
-      const aText = a?.textContent?.trim();
-
-      if (!qText && !aText) continue;
-
-      const row = document.createElement('div');
-      row.className = 'chat-row';
-
-      if (qText) {
-        const qDetails = document.createElement('details');
-        qDetails.className = 'half-box';
-        const qSummary = document.createElement('summary');
-        qSummary.textContent = qText.slice(0, 100);
-        const qBox = document.createElement('div');
-        qBox.className = 'chat-msg-box question-box';
-        qBox.innerHTML = q.innerHTML;
-        qDetails.appendChild(qSummary);
-        qDetails.appendChild(qBox);
-        row.appendChild(qDetails);
-      }
-
-      if (aText) {
-        const aDetails = document.createElement('details');
-        aDetails.className = 'half-box';
-        const aSummary = document.createElement('summary');
-        aSummary.textContent = aText.slice(0, 100);
-        const aBox = document.createElement('div');
-        aBox.className = 'chat-msg-box answer-box';
-        aBox.innerHTML = a.innerHTML;
-        aDetails.appendChild(aSummary);
-        aDetails.appendChild(aBox);
-        row.appendChild(aDetails);
-      }
-
-      content.appendChild(row);
-    }
+  let frontmatter = `---\n`;
+  for (const [key, value] of Object.entries(metadata)) {
+    frontmatter += `${key}: ${Array.isArray(value) ? JSON.stringify(value) : `'${value}'`}\n`;
   }
+  frontmatter += `---`;
 
-  details.appendChild(summary);
-  details.appendChild(content);
-  chatContainer.appendChild(details);
+  const link = `https://chat.openai.com/c/${metadata.chatGPT_conversation_id}`;
+  const chatStarted = `*Chat started ${new Date(metadata.chatGPT_create_time).toLocaleString()}*`;
+
+  let md = `<details style="margin-bottom: 1em;">
+  <summary style="font-weight: bold; cursor: pointer;">Metadata</summary>
+
+  \`\`\`yaml
+  ${frontmatter.trim()}
+  \`\`\`
+
+  </details>
+
+  ${chatStarted}
+  - <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a>
+
+  ---
+  `;
+
+  chat.messages.forEach((msg, i) => {
+    const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
+    const timestamp = new Date(msg.createdAt || new Date()).toLocaleString();
+    const content = msg.content.trim().split('\n').map(line => `> ${line}`).join('\n');
+
+    md += `
+  <details class="chat-message" open>
+    <summary><strong>${i + 1}. ${speaker}</strong> — <em>${timestamp}</em></summary>
+
+    \n\n${content}\n
+  </details>
+  \n\n
+  `;
+  });
+
+  const html = marked.parse(md);
+
+  const div = document.createElement('div');
+  div.classList.add('rendered-chat');
+  div.innerHTML = html;
+  container.appendChild(div);
 }
 
-function parseMarkdown(text) {
-  const blocks = text.split(/\*\*\s*(You|ChatGPT)\s*:\s*\*\*/i);
-  let messages = [];
-  let role = null;
+function parseJSONChats(dataRaw) {
+  let data;
 
-  for (let i = 0; i < blocks.length; i++) {
-    if (i % 2 === 1) {
-      role = blocks[i].trim().toLowerCase() === 'you' ? 'you' : 'assistant';
-    } else if (blocks[i].trim() !== '') {
-      const msg = blocks[i].trim().replace(/~~~/g, '');
-      const html = applySyntaxHighlighting(msg);
-      messages.push(`<div class="chat-msg" data-role="${role}">${html}</div>`);
-    }
+  if (typeof dataRaw === 'string') {
+    data = JSON.parse(dataRaw);
+  } else {
+    data = dataRaw;
   }
 
-  return messages.join('\n\n');
-}
+  const chats = Array.isArray(data) ? data : data.chats;
+  if (!Array.isArray(chats)) {
+    throw new Error("Invalid format: expected an array or object with 'chats' array");
+  }
 
-function parseJSONChats(jsonText) {
-  const data = JSON.parse(jsonText);
-  return data.map((conv, index) => {
-    const messages = Object.values(conv.mapping || {}).map(m => m.message).filter(Boolean);
-    const parts = messages.map(msg => {
-      const role = msg?.author?.role || 'unknown';
-      const label = role === 'user' ? 'you' : role;
-      const contentParts = msg?.content?.parts || [];
-      const safeText = Array.isArray(contentParts) ? contentParts.join('\n') : '';
-      const html = applySyntaxHighlighting(safeText);
-      return `<div class="chat-msg" data-role="${label}">${html}</div>`;
-    });
+  return chats.map((conv, index) => {
+    const rawMessages = Object.values(conv.mapping || {})
+      .map(m => m.message)
+      .filter(Boolean);
 
-    const titleMsg = messages.find(m => m?.author?.role === 'user');
-    const title = titleMsg?.content?.parts?.[0]?.slice(0, 50) || `Chat ${index + 1}`;
-    const timestamp = conv.create_time ? new Date(conv.create_time * 1000).toISOString() : new Date().toISOString();
+    const messages = rawMessages.map(msg => ({
+      role: msg?.author?.role === 'user' ? 'user' : 'assistant',
+      content: msg?.content?.parts?.join('\n') || '',
+      createdAt: new Date(conv.create_time * 1000).toISOString()
+    }));
+
+    const title = conv.title || `Chat ${index + 1}`;
+    const id = conv.conversation_id || `chat-${index}`;
 
     return {
+      id,
       title,
-      content: parts.join('\n\n'),
-      createdAt: timestamp
+      messages,
+      createdAt: new Date(conv.create_time * 1000).toISOString(),
+      updatedAt: new Date(conv.update_time * 1000).toISOString?.() || new Date().toISOString()
     };
   });
-}
-
-function applySyntaxHighlighting(text) {
-  return text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang = 'plaintext', code) => {
-    if (typeof Prism === 'undefined') return match;
-    const grammar = Prism.languages[lang] || Prism.languages.plaintext;
-    const highlighted = Prism.highlight(code, grammar, lang);
-    return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
-  });
-}
-
-function formatMessageContent(content) {
-  return applySyntaxHighlighting(content);
 }
 
 function handleFileUpload(file) {
@@ -238,12 +212,9 @@ function handleFileUpload(file) {
     try {
       if (file.name.endsWith('.json')) {
         newChats = parseJSONChats(e.target.result);
-      } else if (file.name.endsWith('.md')) {
-        newChats.push({
-          title: file.name.replace('.md', ''),
-          content: parseMarkdown(e.target.result),
-          createdAt: new Date().toISOString()
-        });
+      } else {
+        alert("Only .json files are supported.");
+        return;
       }
     } catch (err) {
       alert(`Error parsing ${file.name}: ${err.message}`);

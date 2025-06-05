@@ -58,7 +58,6 @@
     details {
       margin-bottom: 1rem;
       max-width: 100%;
-      border: 1px solid var(--border);
       border-radius: 6px;
       background-color: var(--highlight);
     }
@@ -116,7 +115,7 @@
     }
 
     .chat-entry:hover {
-    background-color: #f0f0f0;
+    background-color: #666060;
     }
 
     aside h3 {
@@ -185,8 +184,31 @@
     .delete-btn:hover {
     background-color: rgba(255, 102, 102, 0.1);
     }
+    
+    .chat-message {
+      margin: 1em 0;
+      border-radius: 6px;
+      padding: 0.5em;
+    }
+
+    .chat-message summary {
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: bold;
+      padding: 0.2em;
+    }
+
+    .chat-message summary:hover {
+      color: #333;
+    }
+
+    /* .chat-message[open] {
+      background: #f9f9f9;
+    } */
 
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 </head>
 <body>
@@ -200,7 +222,7 @@
   <h1>📥 Import ChatGPT Conversations</h1>
 
   <div class="intro-box">
-    <p>Upload your exported <code>conversations.json</code> file from ChatGPT or Markdown files exported using the <a href='https://chromewebstore.google.com/detail/exportgpt-export-chatgpt/jamcijfplmgbngnppdhmbbogjebgfimn'>Export ChatGPT Chrome extension</a>.</p>
+    <p>Upload your exported <code>conversations.json</code> file from ChatGPT.
     <p>You can add multiple files. Everything is stored in your browser only (via <code>localStorage</code>).</p>
     <p>Source: <a href="https://github.com/syazarilasyraf/log.syazarilasyraf.com">Github</a></p>
   </div>
