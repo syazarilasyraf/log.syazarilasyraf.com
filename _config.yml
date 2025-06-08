@@ -1,0 +1,23 @@
+title: log
+baseurl: ""
+url: ""
+
+markdown: kramdown
+kramdown:
+  input: GFM
+
+exclude:
+  - node_modules
+  - vendor
+  - Gemfile
+  - Gemfile.lock
+  - .gitignore
+
+collections:
+  chats:
+    output: true
+    permalink: /chats/:name/
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
