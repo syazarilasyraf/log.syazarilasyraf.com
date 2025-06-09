@@ -56,16 +56,19 @@ document.querySelectorAll('.bulk-delete').forEach(button => {
   });
 });
 
+// modules/storage.js
 function getStoredChats() {
   const stored = localStorage.getItem('uploadedChats');
   return stored ? JSON.parse(stored) : [];
 }
 
+// modules/selection.js
 function getSelectedIndexes() {
   return Array.from(document.querySelectorAll('.chat-select:checked'))
     .map(cb => parseInt(cb.dataset.index));
 }
 
+// modules/exporter.js
 function exportSelectedChatsAsMarkdown() {
   const selected = getSelectedIndexes();
   if (!selected.length) {
@@ -122,6 +125,7 @@ ${chatStarted}
   });
 }
 
+// modules/chatList.js
 function renderChatList() {
   const chats = getStoredChats();
   const chatList = document.getElementById('chatList');
@@ -160,16 +164,30 @@ function renderChatList() {
 
     if (bulkEditMode) {
       entry.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>${chat.title || `Chat ${index + 1}`}</span>
-          <input type="checkbox" class="chat-select" data-index="${index}">
-        </div>`;
-    } else {
-      entry.textContent = chat.title || `Chat ${index + 1}`;
-      entry.onclick = () => {
+      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
+        <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
+      </div>
+      `;
+      // Add event listener to the title only
+      entry.querySelector('.chat-title').addEventListener('click', () => {
+        document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+        entry.classList.add('selected');
         const container = document.getElementById('chatContainer');
         container.innerHTML = '';
         displayChat(index);
+      });
+    } else {
+      entry.textContent = chat.title || `Chat ${index + 1}`;
+      entry.onclick = () => {
+        if (!bulkEditMode) {
+          // Remove old selection
+          document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+          entry.classList.add('selected');
+          const container = document.getElementById('chatContainer');
+          container.innerHTML = '';
+          displayChat(index);
+        }
       };
     }
 
@@ -228,11 +246,116 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const searchInput = document.getElementById('chatSearch');
+  const searchContainer = document.getElementById('searchContainer');
+
+  searchInput.addEventListener('focus', () => {
+    if (window.innerWidth >= 768) {
+      searchContainer.classList.add('floating');
+    }
+  });
+
   // Hook up export buttons in both places
   document.querySelectorAll('.bulk-export').forEach(exportBtn => {
     exportBtn.addEventListener('click', exportSelectedChatsAsMarkdown);
   });
+
+  document.getElementById('chatSearch').addEventListener('input', async (e) => {
+    const query = e.target.value.toLowerCase();
+    const chats = await getStoredChats();
+    const resultsByTitle = [];
+    const resultsByContent = [];
+
+      chats.forEach((chat, index) => {
+        const inTitle = chat.title && chat.title.toLowerCase().includes(query);
+        const inContent = chat.messages?.some(m => m.content.toLowerCase().includes(query));
+
+        if (inTitle) {
+          resultsByTitle.push({ chat, index });
+        }
+        if (!inTitle && inContent) {
+          resultsByContent.push({ chat, index });
+        }
+      });
+
+    renderSearchResults(resultsByTitle, resultsByContent);
+    });
 });
+
+function renderSearchResults(resultsByTitle, resultsByContent) {
+  const resultsContainer = document.getElementById('searchResults');
+  resultsContainer.innerHTML = '';
+
+  if (resultsByTitle.length === 0 && resultsByContent.length === 0) {
+    resultsContainer.innerHTML = '<p>No results found.</p>';
+    return;
+  }
+
+  const createResultItem = ({ chat, index }, matchSnippet = null) => {
+    const div = document.createElement('div');
+    div.className = 'search-result';
+
+    const title = document.createElement('div');
+    title.className = 'result-title';
+    title.textContent = chat.title || `Chat ${index + 1}`;
+
+    div.appendChild(title);
+
+    if (matchSnippet) {
+      const snippet = document.createElement('div');
+      snippet.className = 'result-snippet';
+      snippet.textContent = matchSnippet;
+      div.appendChild(snippet);
+    }
+
+  div.addEventListener('click', () => {
+    displayChat(index); 
+
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('chatSearch').value = '';
+    document.getElementById('searchContainer').classList.remove('floating');
+  });
+
+    return div;
+  };
+
+  const appendSection = (label, results, showSnippets = false) => {
+    if (results.length === 0) return;
+
+    const sectionTitle = document.createElement('h3');
+    sectionTitle.innerText = label;
+    sectionTitle.className = 'search-section-title';
+    resultsContainer.appendChild(sectionTitle);
+
+    results.forEach(({ chat, index }) => {
+      let snippet = null;
+
+      if (showSnippets) {
+        const messageMatch = chat.messages?.find(m =>
+          m.content.toLowerCase().includes(document.getElementById('chatSearch').value.toLowerCase())
+        );
+        if (messageMatch) {
+          const content = messageMatch.content;
+          const query = document.getElementById('chatSearch').value.toLowerCase();
+          const matchIndex = content.toLowerCase().indexOf(query);
+          if (matchIndex !== -1) {
+            const start = Math.max(0, matchIndex - 30);
+            const end = Math.min(content.length, matchIndex + 30);
+            snippet = (start > 0 ? '…' : '') +
+              content.substring(start, end).trim() +
+              (end < content.length ? '…' : '');
+          }
+        }
+      }
+
+      resultsContainer.appendChild(createResultItem({ chat, index }, snippet));
+    });
+  };
+
+  appendSection('Matches in Title', resultsByTitle);
+  appendSection('Matches in Messages', resultsByContent, true);
+}
+
 
 function displayChat(index) {
   const chats = getStoredChats();
@@ -275,63 +398,73 @@ function displayChat(index) {
   ---
   `;
 
+  // Escape for Markdown safety
+  function escapeMarkdown(text) {
+    return text.replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[char]));
+  }
+
   chat.messages.forEach((msg, i) => {
     const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
     const timestamp = new Date(msg.createdAt || new Date()).toLocaleString();
-    const content = msg.content.trim().split('\n').map(line => `> ${line}`).join('\n');
+    const content = escapeMarkdown(msg.content.trim())
+      .split('\n')
+      .map(line => `> ${line}`)
+      .join('\n');
 
-    // Add a delete button with a data attribute for the message index
     md += `
-  <details class="chat-message" open style="position: relative; padding-right: 25px;">
-    <summary>
-      <strong>${i + 1}. ${speaker}</strong> — <em>${timestamp}</em>
-      <button class="delete-msg-btn" data-msg-index="${i}" style="position: absolute; right: 5px; top: 5px; border: none; background: transparent; color: red; font-weight: bold; cursor: pointer;">(x)</button>
-    </summary>
+<details class="chat-message" open style="position: relative; padding-right: 25px;">
+  <summary>
+    <strong>${i + 1}. ${speaker}</strong> — <em>${timestamp}</em>
+    <button class="delete-msg-btn" data-msg-index="${i}" style="position: absolute; right: 5px; top: 5px; border: none; background: transparent; color: red; font-weight: bold; cursor: pointer;">(x)</button>
+  </summary>
 
-    \n\n${content}\n
-  </details>
-  \n\n
-  `;
+  \n\n${content}\n
+</details>\n\n`;
   });
 
   const html = marked.parse(md);
-
   const div = document.createElement('div');
   div.classList.add('rendered-chat');
   div.innerHTML = html;
   container.appendChild(div);
 
-  // Add event listeners for delete buttons
-  const deleteButtons = container.querySelectorAll('.delete-msg-btn');
-  deleteButtons.forEach(btn => {
+  // Delete logic with confirmation
+  container.querySelectorAll('.delete-msg-btn').forEach(btn => {
     let confirmDelete = false;
-
     btn.addEventListener('click', (e) => {
-      e.stopPropagation(); // don't toggle <details>
+      e.stopPropagation();
       const msgIndex = parseInt(btn.dataset.msgIndex);
 
       if (!confirmDelete) {
         btn.textContent = 'Sure?';
         btn.style.color = 'orange';
         confirmDelete = true;
-
-        // Reset if no second click in 3 seconds
         setTimeout(() => {
           btn.textContent = '(x)';
           btn.style.color = 'red';
           confirmDelete = false;
         }, 3000);
       } else {
-        // Second click = confirm deletion
-        chat.messages.splice(msgIndex, 1);
-        chats[index] = chat;
-        localStorage.setItem('uploadedChats', JSON.stringify(chats));
-        displayChat(index);
+        deleteMessageFromChat(index, msgIndex);
         renderChatList();
       }
     });
   });
-  }
+}
+
+function deleteMessageFromChat(chatIndex, msgIndex) {
+  const chats = getStoredChats();
+  if (!chats[chatIndex]) return;
+  chats[chatIndex].messages.splice(msgIndex, 1);
+  localStorage.setItem('uploadedChats', JSON.stringify(chats));
+  displayChat(chatIndex);
+}
 
 function parseJSONChats(dataRaw) {
   let data;
