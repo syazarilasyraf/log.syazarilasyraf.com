@@ -124,8 +124,6 @@ Features (Deployed Version)
 
 Future ideas
 ------------
-
-*   🔍 Add full-text search
     
 *   🧠 Smart summaries for each chat
     
