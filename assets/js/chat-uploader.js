@@ -3,6 +3,7 @@
 let bulkEditMode = false;
 let confirmClearAll = false;
 let confirmDeleteSelected = false;
+// let folderViewEnabled = false;
 
 function clearAllChats(btn = null) {
   const button = btn || document.querySelector('.delete-btn');
@@ -80,14 +81,12 @@ function exportSelectedChatsAsMarkdown() {
 
   chats.forEach((chat, index) => {
     const metadata = {
-      chatGPT_conversation_id: chat.id || `chat-${index}`,
       chatGPT_conversation_title: chat.title || `Chat ${index + 1}`,
+      chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))] || [],
       chatGPT_create_time: chat.createdAt || new Date().toISOString(),
       chatGPT_update_time: chat.updatedAt || new Date().toISOString(),
       chatGPT_converted_time: new Date().toISOString(),
-      chatGPT_first_message_time: chat.messages?.[0]?.createdAt || '',
-      chatGPT_last_message_time: chat.messages?.[chat.messages.length - 1]?.createdAt || '',
-      chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))] || [],
+      chatGPT_conversation_id: chat.id || `chat-${index}`,
     };
 
     let frontmatter = `---\n`;
@@ -125,9 +124,35 @@ ${chatStarted}
   });
 }
 
+// function formatSectionLabel(label) {
+//   return label.replace(/\b\w/g, char => char.toUpperCase());
+// }
+
+// function renderFolderStyleView(sections) {
+//   const chatList = document.getElementById('chatList');
+//   if (!chatList) return;
+
+//   chatList.innerHTML = '';
+
+//   for (const [label, entries] of Object.entries(sections)) {
+//     if (!entries || entries.length === 0) continue;
+
+//     const folder = document.createElement('details');
+//     folder.open = true;
+
+//     const summary = document.createElement('summary');
+//     summary.textContent = formatSectionLabel(label);
+//     folder.appendChild(summary);
+
+//     entries.forEach(entry => folder.appendChild(entry));
+//     chatList.appendChild(folder);
+//   }
+// }
+
 // modules/chatList.js
 function renderChatList() {
   const chats = getStoredChats();
+  const pinnedIndices = new Set(JSON.parse(localStorage.getItem('pinnedChats') || '[]'));
   const chatList = document.getElementById('chatList');
   chatList.innerHTML = '';
 
@@ -149,64 +174,70 @@ function renderChatList() {
   ];
 
   chats.forEach((chat, index) => {
-    const rawDate = chat.date || chat.timestamp || chat.createdAt;
-    const date = new Date(rawDate);
-    if (isNaN(date)) return;
+  const rawDate = chat.date || chat.timestamp || chat.createdAt;
+  const date = new Date(rawDate);
 
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const year = date.getFullYear();
-    const monthName = monthNames[date.getMonth()];
+  if (isNaN(date)) return;
 
-    const entry = document.createElement('div');
-    entry.className = 'chat-entry';
-    entry.setAttribute('data-index', index);
+  const entry = document.createElement('div');
+  entry.className = 'chat-entry';
+  entry.setAttribute('data-index', index);
 
-    if (bulkEditMode) {
-      entry.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-        <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
-        <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
-      </div>
-      `;
-      // Add event listener to the title only
-      entry.querySelector('.chat-title').addEventListener('click', () => {
+  if (bulkEditMode) {
+    entry.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+      <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
+      <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
+    </div>
+    `;
+    entry.querySelector('.chat-title').addEventListener('click', () => {
+      document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+      entry.classList.add('selected');
+      const container = document.getElementById('chatContainer');
+      container.innerHTML = '';
+      displayChat(index);
+    });
+  } else {
+    entry.textContent = chat.title || `Chat ${index + 1}`;
+    entry.onclick = () => {
+      if (!bulkEditMode) {
         document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
         entry.classList.add('selected');
         const container = document.getElementById('chatContainer');
         container.innerHTML = '';
         displayChat(index);
-      });
-    } else {
-      entry.textContent = chat.title || `Chat ${index + 1}`;
-      entry.onclick = () => {
-        if (!bulkEditMode) {
-          // Remove old selection
-          document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
-          entry.classList.add('selected');
-          const container = document.getElementById('chatContainer');
-          container.innerHTML = '';
-          displayChat(index);
-        }
-      };
-    }
+      }
+    };
+  }
 
-    if (diffDays === 0) {
-      sections.today.push(entry);
-    } else if (diffDays === 1) {
-      sections.yesterday.push(entry);
-    } else if (diffDays <= 7) {
-      sections.last7.push(entry);
-    } else if (diffDays <= 30) {
-      sections.last30.push(entry);
-    } else if (year === currentYear) {
-      if (!sections.months[monthName]) sections.months[monthName] = [];
-      sections.months[monthName].push(entry);
-    } else {
-      if (!sections.years[year]) sections.years[year] = [];
-      sections.years[year].push(entry);
-    }
-  });
+  if (pinnedIndices.has(index)) {
+    if (!sections.pinned) sections.pinned = [];
+    sections.pinned.push(entry);
+    return;
+  }
+
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const year = date.getFullYear();
+  const monthName = monthNames[date.getMonth()];
+
+  if (diffDays === 0) {
+    sections.today.push(entry);
+  } else if (diffDays === 1) {
+    sections.yesterday.push(entry);
+  } else if (diffDays <= 7) {
+    sections.last7.push(entry);
+  } else if (diffDays <= 30) {
+    sections.last30.push(entry);
+  } else if (year === currentYear) {
+    if (!sections.months[monthName]) sections.months[monthName] = [];
+    sections.months[monthName].push(entry);
+  } else {
+    if (!sections.years[year]) sections.years[year] = [];
+    sections.years[year].push(entry);
+  }
+});
 
   function renderSection(title, entries) {
     if (!entries.length) return;
@@ -218,11 +249,19 @@ function renderChatList() {
     entries.forEach(entry => section.appendChild(entry));
     chatList.appendChild(section);
   }
-
+  
+  if (folderViewEnabled) { // folder features - not finish yet
+    renderFolderStyleView(sections); // folder features - not finish yet
+  } else { // folder features - not finish yet
+    // Render normally in flat sections
+    if (sections.pinned) { // folder features - not finish yet
+      renderSection('📌 Pinned', sections.pinned);
+    } // folder features - not finish yet
   renderSection('Today', sections.today);
   renderSection('Yesterday', sections.yesterday);
   renderSection('Last 7 Days', sections.last7);
   renderSection('Last 30 Days', sections.last30);
+  } // folder features - not finish yet
 
   for (const [month, entries] of Object.entries(sections.months)) {
     renderSection(month, entries);
@@ -280,6 +319,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderSearchResults(resultsByTitle, resultsByContent);
     });
+});
+
+// New — binds to *all* elements with the 'bulk-pin' class
+document.querySelectorAll('.bulk-pin').forEach(pinBtn => {
+  pinBtn.addEventListener('click', () => {
+    const checkboxes = document.querySelectorAll('.chat-select:checked');
+    const pinnedIndices = new Set(JSON.parse(localStorage.getItem('pinnedChats') || '[]'));
+
+    checkboxes.forEach(checkbox => {
+      const index = parseInt(checkbox.getAttribute('data-index'));
+      if (pinnedIndices.has(index)) {
+        pinnedIndices.delete(index);
+      } else {
+        pinnedIndices.add(index);
+      }
+    });
+
+    localStorage.setItem('pinnedChats', JSON.stringify([...pinnedIndices]));
+    renderChatList();
+  });
 });
 
 function renderSearchResults(resultsByTitle, resultsByContent) {
@@ -356,7 +415,6 @@ function renderSearchResults(resultsByTitle, resultsByContent) {
   appendSection('Matches in Messages', resultsByContent, true);
 }
 
-
 function displayChat(index) {
   const chats = getStoredChats();
   const chat = chats[index];
@@ -364,14 +422,12 @@ function displayChat(index) {
   container.innerHTML = '';
 
   const metadata = {
-    chatGPT_conversation_id: chat.id || `chat-${index}`,
     chatGPT_conversation_title: chat.title || `Chat ${index + 1}`,
+    chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))] || [],
     chatGPT_create_time: chat.createdAt || new Date().toISOString(),
     chatGPT_update_time: chat.updatedAt || new Date().toISOString(),
     chatGPT_converted_time: new Date().toISOString(),
-    chatGPT_first_message_time: chat.messages?.[0]?.createdAt || '',
-    chatGPT_last_message_time: chat.messages?.[chat.messages.length - 1]?.createdAt || '',
-    chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))] || [],
+    chatGPT_conversation_id: chat.id || `chat-${index}`,
   };
 
   let frontmatter = `---\n`;
@@ -383,8 +439,18 @@ function displayChat(index) {
   const link = `https://chat.openai.com/c/${metadata.chatGPT_conversation_id}`;
   const chatStarted = `*Chat started ${new Date(metadata.chatGPT_create_time).toLocaleString()}*`;
 
-  let md = `<details style="margin-bottom: 1em;">
-  <summary style="font-weight: bold; cursor: pointer;">Metadata</summary>
+  let md = `<details open style="
+    border: 1px solid #ddd; 
+    border-radius: 4px; 
+    padding: 0.5em 1em 0em 1em;
+    font-family: 'Courier New', monospace;
+  ">
+    <summary style="
+      font-weight: bold; 
+      cursor: pointer; 
+      padding: 0.3em 0;
+      outline: none;
+    ">Metadata</summary>
 
   \`\`\`yaml
   ${frontmatter.trim()}
@@ -411,6 +477,7 @@ function displayChat(index) {
 
   chat.messages.forEach((msg, i) => {
     const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
+    const speakerClass = msg.role === 'user' ? 'you' : 'chatgpt';
     const timestamp = new Date(msg.createdAt || new Date()).toLocaleString();
     const content = escapeMarkdown(msg.content.trim())
       .split('\n')
@@ -418,9 +485,9 @@ function displayChat(index) {
       .join('\n');
 
     md += `
-<details class="chat-message" open style="position: relative; padding-right: 25px;">
+<details class="chat-message ${speakerClass}" open style="position: relative; padding-right: 25px;">
   <summary>
-    <strong>${i + 1}. ${speaker}</strong> — <em>${timestamp}</em>
+    <strong>${i + 1}. ${speaker}</strong>
     <button class="delete-msg-btn" data-msg-index="${i}" style="position: absolute; right: 5px; top: 5px; border: none; background: transparent; color: red; font-weight: bold; cursor: pointer;">(x)</button>
   </summary>
 
@@ -521,9 +588,12 @@ function handleFileUpload(file) {
       return;
     }
 
-    const existing = getStoredChats();
-    const combined = [...existing, ...newChats];
-    localStorage.setItem('uploadedChats', JSON.stringify(combined));
+    if (localStorage.getItem('uploadedChats')) {
+      const confirmReplace = confirm("Only one file is supported at a time. Uploading a new file will replace your current chats. Continue?");
+      if (!confirmReplace) return;
+    }
+
+    localStorage.setItem('uploadedChats', JSON.stringify(newChats));
     renderChatList();
   };
 
@@ -535,6 +605,10 @@ document.getElementById('burgerButton').addEventListener('click', () => {
   sidebar.classList.toggle('open');
 });
 
+// document.getElementById('toggleFolderView').addEventListener('click', () => { 
+//   folderViewEnabled = !folderViewEnabled; 
+//   renderChatList(); 
+// }); 
 
 window.onload = function () {
   document.getElementById('fileInput').addEventListener('change', function (e) {
