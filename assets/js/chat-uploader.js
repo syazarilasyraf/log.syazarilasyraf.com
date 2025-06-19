@@ -250,18 +250,17 @@ function renderChatList() {
     chatList.appendChild(section);
   }
   
-  if (folderViewEnabled) { // folder features - not finish yet
-    renderFolderStyleView(sections); // folder features - not finish yet
-  } else { // folder features - not finish yet
-    // Render normally in flat sections
-    if (sections.pinned) { // folder features - not finish yet
+  // if (folderViewEnabled) { 
+  //   renderFolderStyleView(sections); 
+  // } else { 
+    if (sections.pinned) { 
       renderSection('📌 Pinned', sections.pinned);
-    } // folder features - not finish yet
+    } 
   renderSection('Today', sections.today);
   renderSection('Yesterday', sections.yesterday);
   renderSection('Last 7 Days', sections.last7);
   renderSection('Last 30 Days', sections.last30);
-  } // folder features - not finish yet
+  // }
 
   for (const [month, entries] of Object.entries(sections.months)) {
     renderSection(month, entries);
@@ -274,16 +273,16 @@ function renderChatList() {
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // All toggle buttons with the same behavior
-  document.querySelectorAll('.toggle-bulk').forEach(toggleBtn => {
-    toggleBtn.addEventListener('click', () => {
-      bulkEditMode = !bulkEditMode;
-      document.querySelectorAll('.bulk-controls').forEach(control => {
-        control.style.display = bulkEditMode ? 'block' : 'none';
-      });
-      renderChatList();
+// All toggle buttons with the same behavior
+document.querySelectorAll('.toggle-bulk').forEach(toggleBtn => {
+  toggleBtn.addEventListener('click', () => {
+    bulkEditMode = !bulkEditMode;
+    document.querySelectorAll('.bulk-controls').forEach(control => {
+      control.style.display = bulkEditMode ? 'block' : 'none';
     });
+    renderChatList();
   });
+});
 
   const searchInput = document.getElementById('chatSearch');
   const searchContainer = document.getElementById('searchContainer');
@@ -294,31 +293,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Hook up export buttons in both places
-  document.querySelectorAll('.bulk-export').forEach(exportBtn => {
-    exportBtn.addEventListener('click', exportSelectedChatsAsMarkdown);
-  });
+// Hook up export buttons in both places
+document.querySelectorAll('.bulk-export').forEach(exportBtn => {
+  exportBtn.addEventListener('click', exportSelectedChatsAsMarkdown);
+});
 
-  document.getElementById('chatSearch').addEventListener('input', async (e) => {
-    const query = e.target.value.toLowerCase();
-    const chats = await getStoredChats();
-    const resultsByTitle = [];
-    const resultsByContent = [];
+document.getElementById('chatSearch').addEventListener('input', async (e) => {
+  const query = e.target.value.toLowerCase();
+  const chats = await getStoredChats();
+  const resultsByTitle = [];
+  const resultsByContent = [];
 
-      chats.forEach((chat, index) => {
-        const inTitle = chat.title && chat.title.toLowerCase().includes(query);
-        const inContent = chat.messages?.some(m => m.content.toLowerCase().includes(query));
+    chats.forEach((chat, index) => {
+      const inTitle = chat.title && chat.title.toLowerCase().includes(query);
+      const inContent = chat.messages?.some(m => m.content.toLowerCase().includes(query));
 
-        if (inTitle) {
-          resultsByTitle.push({ chat, index });
-        }
-        if (!inTitle && inContent) {
-          resultsByContent.push({ chat, index });
-        }
-      });
-
-    renderSearchResults(resultsByTitle, resultsByContent);
+      if (inTitle) {
+        resultsByTitle.push({ chat, index });
+      }
+      if (!inTitle && inContent) {
+        resultsByContent.push({ chat, index });
+      }
     });
+
+  renderSearchResults(resultsByTitle, resultsByContent);
+  });
 });
 
 // New — binds to *all* elements with the 'bulk-pin' class
