@@ -5,6 +5,9 @@ let confirmClearAll = false;
 let confirmDeleteSelected = false;
 // let folderViewEnabled = false;
 
+// --- Folder View Toggle State ---
+let folderViewEnabled = false;
+
 function clearAllChats(btn = null) {
   const button = btn || document.querySelector('.delete-btn');
 
@@ -149,6 +152,181 @@ ${chatStarted}
 //   }
 // }
 
+// --- Helper: Format Section Label ---
+function formatSectionLabel(label) {
+  return label.replace(/\b\w/g, char => char.toUpperCase());
+}
+
+// --- Helper: Render Folder Style View ---
+function renderFolderStyleView(sections) {
+  const chatList = document.getElementById('chatList');
+  if (!chatList) return;
+  chatList.innerHTML = '';
+  // Ensure pinned is always first, then date order (today, yesterday, last7, last30, months, years)
+  const folderOrder = [
+    '📌 Pinned', 'Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days'
+  ];
+  // Add months in reverse (latest first)
+  const months = Object.keys(sections).filter(k => /^[A-Za-z]+$/.test(k) && !folderOrder.includes(k));
+  months.sort((a, b) => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return monthNames.indexOf(b) - monthNames.indexOf(a);
+  });
+  // Add years in reverse (latest first)
+  const years = Object.keys(sections).filter(k => /^\d{4}$/.test(k));
+  years.sort((a, b) => b - a);
+  // Compose ordered keys
+  const orderedKeys = [
+    ...folderOrder.filter(k => sections[k]),
+    ...months.filter(k => sections[k]),
+    ...years.filter(k => sections[k])
+  ];
+  for (const label of orderedKeys) {
+    const entries = sections[label];
+    if (!entries || entries.length === 0) continue;
+    const folder = document.createElement('details');
+    folder.open = false; // closed by default
+    folder.className = 'vscode-folder';
+    const summary = document.createElement('summary');
+    summary.textContent = formatSectionLabel(label);
+    summary.className = 'vscode-folder-label';
+    folder.appendChild(summary);
+    entries.forEach(entry => folder.appendChild(entry));
+    chatList.appendChild(folder);
+  }
+}
+
+// --- Patch renderChatList to support folder view ---
+const originalRenderChatList = renderChatList;
+renderChatList = function() {
+  const chats = getStoredChats();
+  const pinnedIndices = new Set(JSON.parse(localStorage.getItem('pinnedChats') || '[]'));
+  const chatList = document.getElementById('chatList');
+  chatList.innerHTML = '';
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const sections = {
+    today: [],
+    yesterday: [],
+    last7: [],
+    last30: [],
+    months: {},
+    years: {},
+    pinned: []
+  };
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  chats.forEach((chat, index) => {
+    const rawDate = chat.date || chat.timestamp || chat.createdAt;
+    const date = new Date(rawDate);
+    if (isNaN(date)) return;
+    const entry = document.createElement('div');
+    entry.className = 'chat-entry';
+    entry.setAttribute('data-index', index);
+    if (bulkEditMode) {
+      entry.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
+        <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
+      </div>
+      `;
+      entry.querySelector('.chat-title').addEventListener('click', () => {
+        document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+        entry.classList.add('selected');
+        const container = document.getElementById('chatContainer');
+        container.innerHTML = '';
+        displayChat(index);
+      });
+    } else {
+      entry.textContent = chat.title || `Chat ${index + 1}`;
+      entry.onclick = () => {
+        if (!bulkEditMode) {
+          document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+          entry.classList.add('selected');
+          const container = document.getElementById('chatContainer');
+          container.innerHTML = '';
+          displayChat(index);
+        }
+      };
+    }
+    if (pinnedIndices.has(index)) {
+      sections.pinned.push(entry);
+      return;
+    }
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const year = date.getFullYear();
+    const monthName = monthNames[date.getMonth()];
+    if (diffDays === 0) {
+      sections.today.push(entry);
+    } else if (diffDays === 1) {
+      sections.yesterday.push(entry);
+    } else if (diffDays <= 7) {
+      sections.last7.push(entry);
+    } else if (diffDays <= 30) {
+      sections.last30.push(entry);
+    } else if (year === currentYear) {
+      if (!sections.months[monthName]) sections.months[monthName] = [];
+      sections.months[monthName].push(entry);
+    } else {
+      if (!sections.years[year]) sections.years[year] = [];
+      sections.years[year].push(entry);
+    }
+  });
+  if (folderViewEnabled) {
+    // Compose folder sections: pinned, today, yesterday, last7, last30, months, years
+    const folderSections = {};
+    if (sections.pinned.length) folderSections['📌 Pinned'] = sections.pinned;
+    if (sections.today.length) folderSections['Today'] = sections.today;
+    if (sections.yesterday.length) folderSections['Yesterday'] = sections.yesterday;
+    if (sections.last7.length) folderSections['Last 7 Days'] = sections.last7;
+    if (sections.last30.length) folderSections['Last 30 Days'] = sections.last30;
+    for (const [month, entries] of Object.entries(sections.months)) {
+      folderSections[month] = entries;
+    }
+    for (const [year, entries] of Object.entries(sections.years)) {
+      folderSections[year] = entries;
+    }
+    renderFolderStyleView(folderSections);
+  } else {
+    // ...original flat render...
+    function renderSection(title, entries) {
+      if (!entries.length) return;
+      const section = document.createElement('div');
+      section.className = 'chat-section';
+      const header = document.createElement('h3');
+      header.textContent = title;
+      section.appendChild(header);
+      entries.forEach(entry => section.appendChild(entry));
+      chatList.appendChild(section);
+    }
+    if (sections.pinned && sections.pinned.length) {
+      renderSection('📌 Pinned', sections.pinned);
+    }
+    renderSection('Today', sections.today);
+    renderSection('Yesterday', sections.yesterday);
+    renderSection('Last 7 Days', sections.last7);
+    renderSection('Last 30 Days', sections.last30);
+    for (const [month, entries] of Object.entries(sections.months)) {
+      renderSection(month, entries);
+    }
+    for (const [year, entries] of Object.entries(sections.years)) {
+      renderSection(year, entries);
+    }
+  }
+};
+
+// --- Toggle Folder View Button ---
+document.getElementById('toggleFolderView').addEventListener('click', () => {
+  folderViewEnabled = !folderViewEnabled;
+  renderChatList();
+});
+
 // modules/chatList.js
 function renderChatList() {
   const chats = getStoredChats();
@@ -173,71 +351,72 @@ function renderChatList() {
     "July", "August", "September", "October", "November", "December"
   ];
 
+  // Always initialize pinned section
+  sections.pinned = [];
+
   chats.forEach((chat, index) => {
-  const rawDate = chat.date || chat.timestamp || chat.createdAt;
-  const date = new Date(rawDate);
+    const rawDate = chat.date || chat.timestamp || chat.createdAt;
+    const date = new Date(rawDate);
+    if (isNaN(date)) return;
 
-  if (isNaN(date)) return;
+    const entry = document.createElement('div');
+    entry.className = 'chat-entry';
+    entry.setAttribute('data-index', index);
 
-  const entry = document.createElement('div');
-  entry.className = 'chat-entry';
-  entry.setAttribute('data-index', index);
-
-  if (bulkEditMode) {
-    entry.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-      <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
-      <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
-    </div>
-    `;
-    entry.querySelector('.chat-title').addEventListener('click', () => {
-      document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
-      entry.classList.add('selected');
-      const container = document.getElementById('chatContainer');
-      container.innerHTML = '';
-      displayChat(index);
-    });
-  } else {
-    entry.textContent = chat.title || `Chat ${index + 1}`;
-    entry.onclick = () => {
-      if (!bulkEditMode) {
+    if (bulkEditMode) {
+      entry.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+        <span class="chat-title" style="flex: 1;">${chat.title || `Chat ${index + 1}`}</span>
+        <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
+      </div>
+      `;
+      entry.querySelector('.chat-title').addEventListener('click', () => {
         document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
         entry.classList.add('selected');
         const container = document.getElementById('chatContainer');
         container.innerHTML = '';
         displayChat(index);
-      }
-    };
-  }
+      });
+    } else {
+      entry.textContent = chat.title || `Chat ${index + 1}`;
+      entry.onclick = () => {
+        if (!bulkEditMode) {
+          document.querySelectorAll('.chat-entry').forEach(el => el.classList.remove('selected'));
+          entry.classList.add('selected');
+          const container = document.getElementById('chatContainer');
+          container.innerHTML = '';
+          displayChat(index);
+        }
+      };
+    }
 
-  if (pinnedIndices.has(index)) {
-    if (!sections.pinned) sections.pinned = [];
-    sections.pinned.push(entry);
-    return;
-  }
+    // Move this check to the very top for each chat
+    if (pinnedIndices.has(index)) {
+      sections.pinned.push(entry);
+      return; // Do not add to any other section
+    }
 
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const year = date.getFullYear();
-  const monthName = monthNames[date.getMonth()];
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const year = date.getFullYear();
+    const monthName = monthNames[date.getMonth()];
 
-  if (diffDays === 0) {
-    sections.today.push(entry);
-  } else if (diffDays === 1) {
-    sections.yesterday.push(entry);
-  } else if (diffDays <= 7) {
-    sections.last7.push(entry);
-  } else if (diffDays <= 30) {
-    sections.last30.push(entry);
-  } else if (year === currentYear) {
-    if (!sections.months[monthName]) sections.months[monthName] = [];
-    sections.months[monthName].push(entry);
-  } else {
-    if (!sections.years[year]) sections.years[year] = [];
-    sections.years[year].push(entry);
-  }
-});
+    if (diffDays === 0) {
+      sections.today.push(entry);
+    } else if (diffDays === 1) {
+      sections.yesterday.push(entry);
+    } else if (diffDays <= 7) {
+      sections.last7.push(entry);
+    } else if (diffDays <= 30) {
+      sections.last30.push(entry);
+    } else if (year === currentYear) {
+      if (!sections.months[monthName]) sections.months[monthName] = [];
+      sections.months[monthName].push(entry);
+    } else {
+      if (!sections.years[year]) sections.years[year] = [];
+      sections.years[year].push(entry);
+    }
+  });
 
   function renderSection(title, entries) {
     if (!entries.length) return;
@@ -249,18 +428,15 @@ function renderChatList() {
     entries.forEach(entry => section.appendChild(entry));
     chatList.appendChild(section);
   }
-  
-  // if (folderViewEnabled) { 
-  //   renderFolderStyleView(sections); 
-  // } else { 
-    if (sections.pinned) { 
-      renderSection('📌 Pinned', sections.pinned);
-    } 
+
+  // Render pinned section first if it exists
+  if (sections.pinned && sections.pinned.length) {
+    renderSection('📌 Pinned', sections.pinned);
+  }
   renderSection('Today', sections.today);
   renderSection('Yesterday', sections.yesterday);
   renderSection('Last 7 Days', sections.last7);
   renderSection('Last 30 Days', sections.last30);
-  // }
 
   for (const [month, entries] of Object.entries(sections.months)) {
     renderSection(month, entries);
@@ -286,28 +462,93 @@ document.querySelectorAll('.toggle-bulk').forEach(toggleBtn => {
 
   const searchInput = document.getElementById('chatSearch');
   const searchContainer = document.getElementById('searchContainer');
+  const chatList = document.getElementById('chatList');
+  const searchResults = document.getElementById('searchResults');
+
+  // Hide chat list when searching (mobile only)
+  function isMobile() {
+    return window.innerWidth < 768;
+  }
+
+  // Add blur overlay element for floating search bar (desktop only)
+  if (!document.getElementById('search-float-blur')) {
+    const blurDiv = document.createElement('div');
+    blurDiv.id = 'search-float-blur';
+    document.body.appendChild(blurDiv);
+  }
+  const blurOverlay = document.getElementById('search-float-blur');
+
+  // Show blur and handle click outside when floating (desktop only)
+  function showFloatingSearch() {
+    if (window.innerWidth >= 768) {
+      searchContainer.classList.add('floating');
+      blurOverlay.classList.add('active');
+    }
+  }
+  function hideFloatingSearch() {
+    if (window.innerWidth >= 768) {
+      searchContainer.classList.remove('floating');
+      blurOverlay.classList.remove('active');
+    }
+  }
 
   searchInput.addEventListener('focus', () => {
     if (window.innerWidth >= 768) {
-      searchContainer.classList.add('floating');
+      showFloatingSearch();
+    }
+    if (window.innerWidth < 768) {
+      chatList.style.display = 'none';
     }
   });
 
-// Hook up export buttons in both places
-document.querySelectorAll('.bulk-export').forEach(exportBtn => {
-  exportBtn.addEventListener('click', exportSelectedChatsAsMarkdown);
-});
+  // Hide floating search if click outside (desktop only)
+  blurOverlay.addEventListener('mousedown', (e) => {
+    hideFloatingSearch();
+    searchInput.blur();
+    searchResults.innerHTML = '';
+    searchInput.value = '';
+  });
 
-document.getElementById('chatSearch').addEventListener('input', async (e) => {
-  const query = e.target.value.toLowerCase();
-  const chats = await getStoredChats();
-  const resultsByTitle = [];
-  const resultsByContent = [];
+  // Hide floating search on blur if not clicking inside searchContainer
+  searchInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (!searchInput.value && window.innerWidth < 768) {
+        chatList.style.display = '';
+        searchContainer.classList.remove('floating');
+        searchResults.innerHTML = '';
+      }
+      if (window.innerWidth >= 768) {
+        hideFloatingSearch();
+      }
+    }, 200);
+  });
 
+  // Show chat list when search input is cleared or blurred (mobile only)
+  searchInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (!searchInput.value && isMobile()) {
+        chatList.style.display = '';
+        searchContainer.classList.remove('floating');
+        searchResults.innerHTML = '';
+      }
+    }, 200); // Delay to allow click on results
+  });
+
+  // Show chat list if search is cleared (mobile only)
+  searchInput.addEventListener('input', async (e) => {
+    const query = e.target.value.toLowerCase();
+    if (!query && isMobile()) {
+      chatList.style.display = '';
+      searchResults.innerHTML = '';
+      searchContainer.classList.remove('floating');
+    }
+
+    const chats = await getStoredChats();
+    const resultsByTitle = [];
+    const resultsByContent = [];
     chats.forEach((chat, index) => {
       const inTitle = chat.title && chat.title.toLowerCase().includes(query);
       const inContent = chat.messages?.some(m => m.content.toLowerCase().includes(query));
-
       if (inTitle) {
         resultsByTitle.push({ chat, index });
       }
@@ -315,8 +556,7 @@ document.getElementById('chatSearch').addEventListener('input', async (e) => {
         resultsByContent.push({ chat, index });
       }
     });
-
-  renderSearchResults(resultsByTitle, resultsByContent);
+    renderSearchResults(resultsByTitle, resultsByContent);
   });
 });
 
@@ -340,6 +580,7 @@ document.querySelectorAll('.bulk-pin').forEach(pinBtn => {
   });
 });
 
+// When a search result is clicked, show chat list again (mobile only)
 function renderSearchResults(resultsByTitle, resultsByContent) {
   const resultsContainer = document.getElementById('searchResults');
   resultsContainer.innerHTML = '';
@@ -366,13 +607,15 @@ function renderSearchResults(resultsByTitle, resultsByContent) {
       div.appendChild(snippet);
     }
 
-  div.addEventListener('click', () => {
-    displayChat(index); 
-
-    document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('chatSearch').value = '';
-    document.getElementById('searchContainer').classList.remove('floating');
-  });
+    div.addEventListener('click', () => {
+      displayChat(index);
+      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('chatSearch').value = '';
+      document.getElementById('searchContainer').classList.remove('floating');
+      if (window.innerWidth < 768) {
+        document.getElementById('chatList').style.display = '';
+      }
+    });
 
     return div;
   };

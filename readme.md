@@ -1,5 +1,5 @@
-log.syazarilasyraf.com
-----------------------
+logs - ChatGPT
+--------------
 
 A personal tool to view and organize your ChatGPT conversations. It turns exported `.json` files into clean, collapsible chat views right in the browser — fully client-side, private, and mobile-friendly.
 
