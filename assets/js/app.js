@@ -15,6 +15,7 @@ import { parseJSONChats, mergeChats } from './parser.js';
 import { VirtualList } from './virtual-list.js';
 import { 
   getChatTags, 
+  getAllTags,
   addTag, 
   removeTag, 
   getUniqueTags, 
