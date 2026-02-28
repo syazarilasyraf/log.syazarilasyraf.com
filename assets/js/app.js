@@ -13,6 +13,23 @@ import {
 
 import { parseJSONChats, mergeChats } from './parser.js';
 import { VirtualList } from './virtual-list.js';
+import { 
+  getChatTags, 
+  addTag, 
+  removeTag, 
+  getUniqueTags, 
+  searchByTag,
+  updateTagIndices 
+} from './tags.js';
+import { calculateStats, formatStatsHTML } from './stats.js';
+import { 
+  isSyncConfigured, 
+  configureSync, 
+  clearSyncConfig,
+  syncToCloud, 
+  syncFromCloud, 
+  getSyncStatus 
+} from './sync.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -156,9 +173,10 @@ function readFileAsText(file) {
 }
 
 // ==================== CHAT LIST RENDERING ====================
-async function renderChatList() {
+async function renderChatList(filterTag = null) {
   const chats = await getStoredChats();
   const pinnedIndices = new Set(await getPinnedChats());
+  const allTags = await getAllTags();
   const chatListEl = elements.chatList();
   
   if (!chatListEl) return;
@@ -168,8 +186,44 @@ async function renderChatList() {
     chatListEl.innerHTML = '<p style="padding: 1rem; color: #888;">No chats yet. Upload a conversations.json file to get started.</p>';
     return;
   }
+  
+  // Filter by tag if specified
+  let displayChats = chats;
+  let displayIndices = chats.map((_, i) => i);
+  
+  if (filterTag) {
+    const taggedIndices = await searchByTag(filterTag);
+    displayChats = chats.filter((_, i) => taggedIndices.includes(i));
+    displayIndices = taggedIndices;
+  }
 
-  const sections = groupChatsByDate(chats, pinnedIndices);
+  // Add tag filter bar
+  const uniqueTags = await getUniqueTags();
+  if (uniqueTags.length > 0) {
+    const tagBar = document.createElement('div');
+    tagBar.className = 'tag-filter-bar';
+    tagBar.innerHTML = '<span style="color: #888; font-size: 0.85em;">Filter: </span>';
+    
+    // "All" button
+    const allBtn = document.createElement('button');
+    allBtn.className = 'tag-chip' + (!filterTag ? ' active' : '');
+    allBtn.textContent = 'All';
+    allBtn.onclick = () => renderChatList();
+    tagBar.appendChild(allBtn);
+    
+    // Tag buttons
+    uniqueTags.forEach(tag => {
+      const btn = document.createElement('button');
+      btn.className = 'tag-chip' + (filterTag === tag ? ' active' : '');
+      btn.textContent = tag;
+      btn.onclick = () => renderChatList(tag);
+      tagBar.appendChild(btn);
+    });
+    
+    chatListEl.appendChild(tagBar);
+  }
+
+  const sections = groupChatsByDateWithTags(displayChats, displayIndices, pinnedIndices, allTags);
 
   if (folderViewEnabled) {
     renderFolderView(chatListEl, sections);
@@ -179,6 +233,10 @@ async function renderChatList() {
 }
 
 function groupChatsByDate(chats, pinnedIndices) {
+  return groupChatsByDateWithTags(chats, chats.map((_, i) => i), pinnedIndices, {});
+}
+
+function groupChatsByDateWithTags(chats, originalIndices, pinnedIndices, allTags) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const sections = {
@@ -196,14 +254,15 @@ function groupChatsByDate(chats, pinnedIndices) {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  chats.forEach((chat, index) => {
+  chats.forEach((chat, displayIndex) => {
+    const originalIndex = originalIndices[displayIndex];
     const rawDate = chat.createdAt || chat.date || chat.timestamp;
     const date = new Date(rawDate);
     if (isNaN(date)) return;
 
-    const entry = createChatEntryElement(chat, index);
+    const entry = createChatEntryElement(chat, originalIndex, allTags[originalIndex] || []);
 
-    if (pinnedIndices.has(index)) {
+    if (pinnedIndices.has(originalIndex)) {
       sections.pinned.push(entry);
       return;
     }
@@ -229,10 +288,14 @@ function groupChatsByDate(chats, pinnedIndices) {
   return sections;
 }
 
-function createChatEntryElement(chat, index) {
+function createChatEntryElement(chat, index, tags = []) {
   const entry = document.createElement('div');
   entry.className = 'chat-entry';
   entry.setAttribute('data-index', index);
+
+  const tagsHtml = tags.length > 0 
+    ? `<div class="entry-tags">${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
+    : '';
 
   if (bulkEditMode) {
     entry.innerHTML = `
@@ -240,10 +303,14 @@ function createChatEntryElement(chat, index) {
         <span class="chat-title" style="flex: 1;">${escapeHtml(chat.title) || `Chat ${index + 1}`}</span>
         <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
       </div>
+      ${tagsHtml}
     `;
     entry.querySelector('.chat-title')?.addEventListener('click', () => selectChat(index));
   } else {
-    entry.textContent = chat.title || `Chat ${index + 1}`;
+    entry.innerHTML = `
+      <div class="chat-title">${escapeHtml(chat.title) || `Chat ${index + 1}`}</div>
+      ${tagsHtml}
+    `;
     entry.onclick = () => selectChat(index);
   }
 
@@ -346,7 +413,10 @@ async function displayChat(index) {
   };
 
   // Build metadata section (always static)
-  container.innerHTML = buildMetadataHTML(metadata);
+  container.innerHTML = await buildMetadataHTML(metadata, index);
+  
+  // Attach tag handlers
+  attachTagHandlers(container, index);
 
   // Messages section
   if (!chat.messages || chat.messages.length === 0) {
@@ -363,9 +433,50 @@ async function displayChat(index) {
   }
 }
 
-function buildMetadataHTML(metadata) {
+function attachTagHandlers(container, chatIndex) {
+  const tagEditor = container.querySelector('.tag-editor');
+  if (!tagEditor) return;
+  
+  // Remove tag on click
+  tagEditor.querySelectorAll('.tag.removable').forEach(tagEl => {
+    tagEl.addEventListener('click', async () => {
+      const tag = tagEl.dataset.tag;
+      if (confirm(`Remove tag "${tag}"?`)) {
+        await removeTag(chatIndex, tag);
+        await displayChat(chatIndex);
+        await renderChatList(); // Update sidebar
+      }
+    });
+  });
+  
+  // Add tag on Enter
+  const input = tagEditor.querySelector('.tag-input');
+  if (input) {
+    input.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        const tag = input.value.trim();
+        if (tag) {
+          await addTag(chatIndex, tag);
+          input.value = '';
+          await displayChat(chatIndex);
+          await renderChatList(); // Update sidebar
+        }
+      }
+    });
+    
+    // Focus input when clicking the container
+    tagEditor.addEventListener('click', (e) => {
+      if (e.target === tagEditor || e.target.classList.contains('current-tags')) {
+        input.focus();
+      }
+    });
+  }
+}
+
+async function buildMetadataHTML(metadata, chatIndex) {
   const link = `https://chat.openai.com/c/${metadata.id}`;
   const created = new Date(metadata.createdAt).toLocaleString();
+  const tags = await getChatTags(chatIndex);
 
   return `
     <details open class="metadata-box">
@@ -373,6 +484,13 @@ function buildMetadataHTML(metadata) {
       <pre><code>${escapeHtml(JSON.stringify(metadata, null, 2))}</code></pre>
     </details>
     <p><em>Chat started ${created}</em> · <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a></p>
+    <div class="tag-editor" data-chat-index="${chatIndex}">
+      <span style="color: #888;">Tags:</span>
+      <div class="current-tags">
+        ${tags.map(t => `<span class="tag removable" data-tag="${escapeHtml(t)}">${escapeHtml(t)} ×</span>`).join('')}
+        <input type="text" class="tag-input" placeholder="+ Add tag" maxlength="20">
+      </div>
+    </div>
     <hr>
     <p style="color: #888; font-size: 0.9em;">
       ${metadata.messageCount} messages 
@@ -519,6 +637,9 @@ async function handleBulkDelete() {
         return idx - removedBefore;
       });
     await savePinnedChats(newPinned);
+    
+    // Update tag indices
+    await updateTagIndices(selected);
     
     resetSearchIndex(); // Reset fuzzy search cache
     await renderChatList();
@@ -797,6 +918,164 @@ function renderSearchResults(byTitle, byContent, query) {
 }
 
 // ==================== GLOBAL ACTIONS ====================
+window.showSyncSettings = async function() {
+  const container = elements.chatContainer();
+  if (!container) return;
+  
+  const status = getSyncStatus();
+  const isConfigured = isSyncConfigured();
+  
+  container.innerHTML = `
+    <div style="max-width: 600px; margin: 0 auto;">
+      <h2>☁️ Cloud Sync</h2>
+      
+      <div class="sync-section">
+        <h3>Status</h3>
+        <p>
+          <span class="sync-status ${isConfigured ? 'configured' : 'not-configured'}">
+            ${isConfigured ? '✅ Configured' : '❌ Not configured'}
+          </span>
+        </p>
+        ${status.lastSync ? `<p>Last sync: ${new Date(status.lastSync).toLocaleString()}</p>` : ''}
+        <p style="color: #888; font-size: 0.9em;">Device ID: ${status.deviceId}</p>
+      </div>
+      
+      ${isConfigured ? `
+        <div class="sync-section">
+          <h3>Sync Actions</h3>
+          <button onclick="performSyncToCloud()" class="upload-btn" style="margin-right: 0.5rem;">
+            ⬆️ Upload to Cloud
+          </button>
+          <button onclick="performSyncFromCloud()" class="upload-btn">
+            ⬇️ Download from Cloud
+          </button>
+          <button onclick="disconnectSync()" class="delete-btn" style="margin-left: 1rem;">
+            Disconnect
+          </button>
+          <div id="syncResult" style="margin-top: 1rem;"></div>
+        </div>
+      ` : `
+        <div class="sync-section">
+          <h3>Setup</h3>
+          <p style="margin-bottom: 1rem;">
+            Sync requires a free <a href="https://supabase.com" target="_blank">Supabase</a> account.
+            <br>Create a project, then enter your credentials below.
+          </p>
+          <input type="text" id="sbUrl" placeholder="Supabase URL (https://...supabase.co)" 
+                 style="width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+          <input type="password" id="sbKey" placeholder="Supabase Anon Key" 
+                 style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+          <button onclick="saveSyncConfig()" class="upload-btn">Connect</button>
+          <div id="syncResult" style="margin-top: 1rem;"></div>
+        </div>
+        
+        <div class="sync-section" style="margin-top: 1rem; background: #1a1a2e;">
+          <h3>🚀 Quick Setup Guide</h3>
+          <ol style="line-height: 1.8;">
+            <li>Go to <a href="https://supabase.com" target="_blank">supabase.com</a> and sign up (free)</li>
+            <li>Create a new project</li>
+            <li>In the SQL Editor, run the SQL from sync.js comments</li>
+            <li>Go to Project Settings → API</li>
+            <li>Copy "Project URL" and "anon public" key</li>
+            <li>Paste them above and click Connect</li>
+          </ol>
+        </div>
+      `}
+      
+      <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+    </div>
+  `;
+};
+
+window.saveSyncConfig = async function() {
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  const resultDiv = document.getElementById('syncResult');
+  
+  if (!url || !key) {
+    resultDiv.innerHTML = '<p style="color: #ff6666;">Please enter both URL and Key</p>';
+    return;
+  }
+  
+  resultDiv.innerHTML = '<p>Testing connection...</p>';
+  
+  try {
+    const success = configureSync(url, key);
+    if (success) {
+      // Test the connection
+      const result = await syncToCloud();
+      if (result.success) {
+        resultDiv.innerHTML = '<p style="color: #4CAF50;">✅ Connected and synced successfully!</p>';
+        setTimeout(() => showSyncSettings(), 1500);
+      } else {
+        resultDiv.innerHTML = `<p style="color: #ff6666;">⚠️ Connected but sync test failed: ${result.error}</p>`;
+      }
+    } else {
+      resultDiv.innerHTML = '<p style="color: #ff6666;">Failed to initialize sync</p>';
+    }
+  } catch (error) {
+    resultDiv.innerHTML = `<p style="color: #ff6666;">Error: ${error.message}</p>`;
+  }
+};
+
+window.performSyncToCloud = async function() {
+  const resultDiv = document.getElementById('syncResult');
+  resultDiv.innerHTML = '<p>Syncing to cloud...</p>';
+  
+  const result = await syncToCloud();
+  
+  if (result.success) {
+    resultDiv.innerHTML = `<p style="color: #4CAF50;">✅ Uploaded ${result.chats} chats</p>`;
+  } else {
+    resultDiv.innerHTML = `<p style="color: #ff66666;">❌ Error: ${result.error}</p>`;
+  }
+};
+
+window.performSyncFromCloud = async function() {
+  const resultDiv = document.getElementById('syncResult');
+  resultDiv.innerHTML = '<p>Syncing from cloud...</p>';
+  
+  const result = await syncFromCloud();
+  
+  if (result.success) {
+    if (result.empty) {
+      resultDiv.innerHTML = '<p style="color: #888;">ℹ️ No data found in cloud</p>';
+    } else {
+      resultDiv.innerHTML = `<p style="color: #4CAF50;">✅ Downloaded ${result.chats} chats</p>`;
+      // Refresh the chat list
+      await renderChatList();
+    }
+  } else {
+    resultDiv.innerHTML = `<p style="color: #ff6666;">❌ Error: ${result.error}</p>`;
+  }
+};
+
+window.disconnectSync = function() {
+  if (confirm('Disconnect from cloud sync? Local data will be kept.')) {
+    clearSyncConfig();
+    showSyncSettings();
+  }
+};
+
+window.showStats = async function() {
+  const container = elements.chatContainer();
+  if (!container) return;
+  
+  container.innerHTML = '<p style="padding: 2rem; text-align: center;">Calculating statistics...</p>';
+  
+  // Use setTimeout to allow UI to update before heavy calculation
+  setTimeout(async () => {
+    const stats = await calculateStats();
+    container.innerHTML = `
+      <div style="max-width: 800px; margin: 0 auto;">
+        <h2 style="display: flex; align-items: center; gap: 0.5rem;">📊 Chat Statistics</h2>
+        ${formatStatsHTML(stats)}
+        <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+      </div>
+    `;
+  }, 100);
+};
+
 window.clearAllChats = async function(btn) {
   const button = btn || document.querySelector('.delete-btn');
 

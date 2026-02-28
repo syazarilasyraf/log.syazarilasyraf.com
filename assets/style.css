@@ -639,3 +639,245 @@
       padding: 0 2px;
       border-radius: 2px;
     }
+
+    /* Tag system */
+    .tag-filter-bar {
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .tag-chip {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tag-chip:hover {
+      background: var(--link);
+      color: #000;
+    }
+
+    .tag-chip.active {
+      background: var(--link);
+      color: #000;
+      border-color: var(--link);
+    }
+
+    .entry-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .tag {
+      background: #2d3743;
+      color: #8ab4f8;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 0.75em;
+      white-space: nowrap;
+    }
+
+    .tag.removable {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .tag.removable:hover {
+      background: #ff6666;
+      color: #fff;
+    }
+
+    .tag-editor {
+      margin: 1rem 0;
+      padding: 0.5rem;
+      background: var(--bg-light);
+      border-radius: 6px;
+    }
+
+    .tag-editor .current-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      align-items: center;
+    }
+
+    .tag-editor input.tag-input {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: var(--fg);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.85em;
+      width: 100px;
+    }
+
+    .tag-editor input.tag-input:focus {
+      outline: none;
+      border-color: var(--link);
+    }
+
+    /* Statistics */
+    .stats-btn {
+      background: transparent;
+      color: #9c27b0;
+      padding: 0.5rem 1rem;
+      border: 1px solid #9c27b0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    .stats-btn:hover {
+      background-color: rgba(156, 39, 176, 0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .stat-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: var(--link);
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      color: #888;
+      margin-top: 0.5rem;
+    }
+
+    .stats-section {
+      margin: 2rem 0;
+      padding: 1rem;
+      background: var(--bg-light);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .stats-section h3 {
+      margin-top: 0;
+      color: var(--link);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+
+    .stats-bar {
+      display: flex;
+      height: 40px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    .bar-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.85em;
+      font-weight: bold;
+      min-width: 60px;
+    }
+
+    .bar-segment.user {
+      background: #2e7d32;
+    }
+
+    .bar-segment.assistant {
+      background: #1565c0;
+    }
+
+    .stats-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .stats-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-list li:last-child {
+      border-bottom: none;
+    }
+
+    .tag-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+
+    /* Cloud Sync */
+    .sync-btn {
+      background: transparent;
+      color: #00bcd4;
+      padding: 0.5rem 1rem;
+      border: 1px solid #00bcd4;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    .sync-btn:hover {
+      background-color: rgba(0, 188, 212, 0.1);
+    }
+
+    .sync-section {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .sync-section h3 {
+      margin-top: 0;
+      color: var(--link);
+    }
+
+    .sync-status {
+      font-weight: bold;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.9em;
+    }
+
+    .sync-status.configured {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+    }
+
+    .sync-status.not-configured {
+      background: rgba(255, 102, 102, 0.2);
+      color: #ff6666;
+    }
