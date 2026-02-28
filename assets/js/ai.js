@@ -2,7 +2,39 @@
 // Users provide their own API key (BYOK - Bring Your Own Key)
 
 const API_KEY_STORAGE_KEY = 'openai_api_key';
+const TAG_PROMPT_KEY = 'ai_tag_prompt';
 const API_BASE_URL = 'https://api.openai.com/v1';
+
+// Default tagging prompt (users can customize)
+const DEFAULT_TAG_PROMPT = `Analyze this conversation and generate 3-5 relevant tags.
+
+Conversation Title: {{title}}
+
+First messages:
+{{messages}}
+
+Existing tags to avoid duplicates: {{existingTags}}
+
+Rules:
+- Use lowercase, single words or short phrases
+- Be specific but not too narrow
+- Focus on topics, technologies, or domains
+- Avoid generic tags like "chat" or "conversation"
+- Return ONLY a comma-separated list, nothing else
+
+Example output: javascript, debugging, api, troubleshooting
+
+Tags:`;
+
+// Get user's custom tag prompt or default
+export function getTagPrompt() {
+  return localStorage.getItem(TAG_PROMPT_KEY) || DEFAULT_TAG_PROMPT;
+}
+
+// Save custom tag prompt
+export function setTagPrompt(prompt) {
+  localStorage.setItem(TAG_PROMPT_KEY, prompt);
+}
 
 // Store API key locally (user's browser only)
 export function setApiKey(key) {
@@ -60,25 +92,12 @@ export async function generateTags(chat, existingTags = []) {
     .map(m => `${m.role}: ${m.content.substring(0, 200)}`)
     .join('\n\n') || '';
 
-  const prompt = `Analyze this conversation and generate 3-5 relevant tags.
-
-Conversation Title: ${chat.title}
-
-First messages:
-${conversationPreview}
-
-Existing tags to avoid duplicates: ${existingTags.join(', ')}
-
-Rules:
-- Use lowercase, single words or short phrases
-- Be specific but not too narrow
-- Focus on topics, technologies, or domains
-- Avoid generic tags like "chat" or "conversation"
-- Return ONLY a comma-separated list, nothing else
-
-Example output: javascript, debugging, api, troubleshooting
-
-Tags:`;
+  // Use custom prompt with variable substitution
+  let prompt = getTagPrompt();
+  prompt = prompt
+    .replace('{{title}}', chat.title || 'Untitled')
+    .replace('{{messages}}', conversationPreview)
+    .replace('{{existingTags}}', existingTags.join(', '));
 
   try {
     const response = await fetch(`${API_BASE_URL}/chat/completions`, {

@@ -37,10 +37,24 @@ import {
   getApiKey,
   clearApiKey,
   validateApiKey,
+  getTagPrompt,
+  setTagPrompt,
   generateTags,
   generateSummary,
   estimateTagCost
 } from './ai.js';
+import {
+  getSummaryPrompt,
+  setSummaryPrompt,
+  getSummarySettings,
+  setSummarySettings,
+  getWeeklyConversations,
+  generateWeeklySummary,
+  exportSummaryAsMarkdown,
+  copySummaryToClipboard,
+  generateEmailLink,
+  estimateWeeklySummaryCost
+} from './weekly-summary.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -952,12 +966,16 @@ window.showAISettings = async function() {
   
   const hasKey = hasApiKey();
   const apiKey = getApiKey();
-  const maskedKey = apiKey ? `${apiKey.substring(0, 10)}...${apiKey.substring(-4)}` : '';
+  const maskedKey = apiKey ? `${apiKey.substring(0, 10)}...${apiKey.slice(-4)}` : '';
+  const currentTagPrompt = getTagPrompt ? getTagPrompt() : 'Default prompt not available';
+  const currentSummaryPrompt = getSummaryPrompt();
+  const summarySettings = getSummarySettings();
   
   container.innerHTML = `
-    <div style="max-width: 600px; margin: 0 auto;">
+    <div style="max-width: 700px; margin: 0 auto;">
       <h2>🤖 AI Features</h2>
       
+      <!-- API Key Section -->
       <div class="ai-section">
         <h3>OpenAI API Key</h3>
         <p style="margin-bottom: 1rem; color: #888;">
@@ -982,34 +1000,114 @@ window.showAISettings = async function() {
         `}
       </div>
       
+      ${hasKey ? `
+      <!-- Custom Prompts Section -->
+      <div class="ai-section">
+        <h3>🎨 Custom Prompts</h3>
+        <p style="color: #888; margin-bottom: 1rem;">
+          Customize the AI prompts for tagging and summarization.
+        </p>
+        
+        <details style="margin-bottom: 1rem;">
+          <summary style="cursor: pointer; color: #888;">Edit Tagging Prompt</summary>
+          <div style="margin-top: 1rem;">
+            <textarea id="tagPrompt" rows="8" 
+                      style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 0.9em;"
+                      placeholder="Enter your custom tagging prompt...">${escapeHtml(getTagPrompt())}</textarea>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+              <button onclick="saveTagPrompt()" class="ai-tag-btn">Save Tag Prompt</button>
+              <button onclick="resetTagPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset</button>
+            </div>
+            <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">
+              Variables: {{title}}, {{messages}}, {{existingTags}}
+            </p>
+          </div>
+        </details>
+      </div>
+      
+      <!-- Weekly Summary Section -->
+      <div class="ai-section">
+        <h3>📅 Weekly Summary</h3>
+        <p style="color: #888; margin-bottom: 1rem;">
+          Generate a weekly summary of your ChatGPT usage. All processing happens client-side.
+        </p>
+        
+        <div id="weeklyConvCount" style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          Loading...
+        </div>
+        
+        <button onclick="generateWeeklySummaryUI()" class="upload-btn" style="margin-bottom: 1rem;">
+          📝 Generate Weekly Summary
+        </button>
+        
+        <details style="margin-top: 1rem;">
+          <summary style="cursor: pointer; color: #888;">Customize Summary Prompt</summary>
+          <div style="margin-top: 1rem;">
+            <textarea id="summaryPrompt" rows="10" 
+                      style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 0.9em;"
+                      placeholder="Enter your custom prompt...">${escapeHtml(currentSummaryPrompt)}</textarea>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+              <button onclick="saveSummaryPrompt()" class="ai-tag-btn">Save Prompt</button>
+              <button onclick="resetSummaryPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset to Default</button>
+            </div>
+            <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">
+              Variables: {{conversations}}, {{chatCount}}, {{messageCount}}, {{mostActiveDay}}
+            </p>
+          </div>
+        </details>
+      </div>
+      ` : ''}
+      
+      <!-- Features Info -->
       <div class="ai-section">
         <h3>Features</h3>
         <ul style="line-height: 1.8; margin: 0; padding-left: 1.5rem;">
           <li><strong>Auto-tagging:</strong> AI suggests relevant tags for your chats</li>
           <li><strong>Summarization:</strong> Generate concise summaries of long conversations</li>
+          <li><strong>Weekly Summary:</strong> Automated weekly reports of your usage</li>
         </ul>
         
         <div style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
           <p style="margin: 0; color: #888; font-size: 0.9em;">
-            <strong>Cost estimate:</strong> ~$0.001 per chat tagged
-            <br>You'll only be charged by OpenAI for actual usage.
+            <strong>Cost estimates:</strong><br>
+            • Auto-tagging: ~$0.001 per chat<br>
+            • Weekly summary: ~$0.01-0.05 per week<br>
+            You only pay OpenAI for actual usage.
           </p>
         </div>
       </div>
       
+      <!-- Privacy Section -->
       <div class="ai-section">
         <h3>Privacy</h3>
         <p style="color: #888; font-size: 0.9em; margin: 0;">
           • Your API key never leaves your browser (stored in localStorage)<br>
           • Conversation data is sent directly to OpenAI's API<br>
           • We don't store or log any of your data<br>
-          • You can remove your key at any time
+          • You can remove your key at any time<br>
+          • All AI processing happens client-side in your browser
         </p>
       </div>
       
       <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
     </div>
   `;
+  
+  // Load weekly conversation count if key exists
+  if (hasKey) {
+    getWeeklyConversations().then(convs => {
+      const cost = estimateWeeklySummaryCost(convs.length);
+      const countDiv = document.getElementById('weeklyConvCount');
+      if (countDiv) {
+        countDiv.innerHTML = `
+          <p style="margin: 0; color: var(--fg);"><strong>${convs.length}</strong> conversations from the past 7 days</p>
+          <p style="margin: 0.5rem 0 0 0; color: #888; font-size: 0.9em;">
+            Estimated cost for summary: ${cost.note}
+          </p>
+        `;
+      }
+    });
+  }
 };
 
 window.saveApiKey = async function() {
@@ -1042,6 +1140,122 @@ window.removeApiKey = function() {
   if (confirm('Remove your OpenAI API key?')) {
     clearApiKey();
     showAISettings();
+  }
+};
+
+window.saveTagPrompt = function() {
+  const prompt = document.getElementById('tagPrompt').value;
+  setTagPrompt(prompt);
+  alert('Tagging prompt saved!');
+};
+
+window.resetTagPrompt = function() {
+  if (confirm('Reset tagging prompt to default?')) {
+    localStorage.removeItem('ai_tag_prompt');
+    showAISettings();
+  }
+};
+
+window.saveSummaryPrompt = function() {
+  const prompt = document.getElementById('summaryPrompt').value;
+  setSummaryPrompt(prompt);
+  alert('Summary prompt saved!');
+};
+
+window.resetSummaryPrompt = function() {
+  if (confirm('Reset to default prompt?')) {
+    localStorage.removeItem('weekly_summary_prompt');
+    showAISettings();
+  }
+};
+
+window.generateWeeklySummaryUI = async function() {
+  const btn = document.querySelector('button[onclick="generateWeeklySummaryUI()"]');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  
+  try {
+    const result = await generateWeeklySummary();
+    
+    // Show result
+    const container = elements.chatContainer();
+    container.innerHTML = `
+      <div style="max-width: 800px; margin: 0 auto;">
+        <h2>📅 Weekly Summary</h2>
+        <p style="color: #888; margin-bottom: 1rem;">
+          Generated: ${new Date(result.generatedAt).toLocaleString()}
+        </p>
+        
+        <div class="ai-section" style="white-space: pre-wrap; font-family: system-ui, sans-serif;">
+          ${marked.parse(result.summary)}
+        </div>
+        
+        <div class="ai-section">
+          <h3>📈 This Week's Stats</h3>
+          <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="stat-box">
+              <div class="stat-value">${result.stats.chatCount}</div>
+              <div class="stat-label">Conversations</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${result.stats.messageCount}</div>
+              <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" style="font-size: 1.2em;">${result.stats.mostActiveDay}</div>
+              <div class="stat-label">Most Active Day</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem;">
+          <button onclick="downloadWeeklySummary()" class="upload-btn">💾 Download as Markdown</button>
+          <button onclick="copyWeeklySummary()" class="export-btn">📋 Copy to Clipboard</button>
+          <button onclick="emailWeeklySummary()" class="ai-tag-btn">📧 Email Summary</button>
+          <button onclick="showAISettings()" class="delete-btn">← Back to AI Settings</button>
+        </div>
+      </div>
+    `;
+    
+    // Store result for download/copy functions
+    window._lastWeeklySummary = result;
+    
+  } catch (error) {
+    alert('Error generating summary: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
+
+window.downloadWeeklySummary = function() {
+  if (window._lastWeeklySummary) {
+    exportSummaryAsMarkdown(window._lastWeeklySummary);
+  }
+};
+
+window.copyWeeklySummary = async function() {
+  if (window._lastWeeklySummary) {
+    await copySummaryToClipboard(window._lastWeeklySummary);
+    alert('Summary copied to clipboard!');
+  }
+};
+
+window.emailWeeklySummary = function() {
+  if (!window._lastWeeklySummary) return;
+  
+  const settings = getSummarySettings();
+  if (settings.emailAddress) {
+    const link = generateEmailLink(window._lastWeeklySummary, settings.emailAddress);
+    window.location.href = link;
+  } else {
+    const email = prompt('Enter your email address:');
+    if (email) {
+      settings.emailAddress = email;
+      setSummarySettings(settings);
+      const link = generateEmailLink(window._lastWeeklySummary, email);
+      window.location.href = link;
+    }
   }
 };
 
