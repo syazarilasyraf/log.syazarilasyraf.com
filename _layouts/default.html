@@ -5,57 +5,61 @@
 
 <body>
 
-    <div id="bulkControls" style="display: none;" class="bulk-controls">
+  <div id="bulkControls" style="display: none;" class="bulk-controls">
     <button id="bulkDelete" class="bulk-delete delete-button">🗑️</button>
     <button id="bulkExport" class="bulk-export export-button">📤</button>
     <button id="bulkPinToggle" class="bulk-pin pin-button">📌</button>
-    </div>
-    <button id="toggleBulk" class="toggle-bulk pencil-button">✏️</button>
-    <button id="burgerButton" class="burger-button">💬</button>
-    <aside id="sidebar" class="sidebar">
+  </div>
+  
+  <button id="toggleBulk" class="toggle-bulk pencil-button">✏️</button>
+  <button id="burgerButton" class="burger-button">💬</button>
+  
+  <aside id="sidebar" class="sidebar">
     <h2>logs - ChatGPT</h2>
-    <button id="toggleBulk" class="toggle-bulk bulk-btn">✏️ Select Chats</button>
+    <button class="toggle-bulk bulk-btn">✏️ Select Chats</button>
     <button id="toggleFolderView" title="Toggle Folder View" style="background: none; border: none; padding: 0; margin-left: 0.5em; font-size: 1.2em; cursor: pointer; vertical-align: middle;">
       <span aria-label="Toggle Folder View" style="display: inline-block; line-height: 1;">📁</span>
     </button> 
     <div id="searchContainer">
-    <input
-      type="text"
-      id="chatSearch"
-      placeholder="🔍 Search chats..."
-    />
-    <div id="searchResults"></div>
+      <input type="text" id="chatSearch" placeholder="🔍 Search chats..." />
+      <div id="searchResults"></div>
     </div>
     <div id="chatList"></div>
-    </aside>
+  </aside>
 
-<main>
-  <h1>logs - ChatGPT</h1>
+  <main>
+    <h1>logs - ChatGPT</h1>
 
-  <div class="intro-box">
-    <p>Upload your exported <code>conversations.json</code> file from ChatGPT.
-    <p>Everything is stored in your browser only (via <code>localStorage</code>).</p>
-    <p>Source: <a href="https://github.com/syazarilasyraf/log.syazarilasyraf.com" target="_blank" rel="noopener noreferrer">Github</a></p>
-  </div>
-
-  <div class="upload-controls">
-    <label class="upload-btn">
-      📂 Choose Files
-      <input type="file" id="fileInput" accept=".json" multiple hidden>
-    </label>
-    <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
-    <div id="bulkControls" style="display: none;" class="bulk-controls ">
-    <button id="bulkDelete" class="bulk-delete delete-btn">🗑️ Delete Selected</button>
-    <button id="bulkExport" class="bulk-export export-btn">📤 Export to .Md</button>
-    <button id="bulkPinToggle" class="bulk-pin pin-btn">📌 Pinned Chats</button>
+    <div class="intro-box">
+      <p>Upload your exported <code>conversations.json</code> file from ChatGPT.</p>
+      <p>Everything is stored locally in your browser (via IndexedDB).</p>
+      <p><small>Storage upgraded: Now supports 50MB+ files.</small></p>
+      <p>Source: <a href="https://github.com/syazarilasyraf/log.syazarilasyraf.com" target="_blank" rel="noopener noreferrer">Github</a></p>
     </div>
-  </div>
 
-  <section id="chatContainer" class="chat-container"></section>
+    <div class="upload-controls">
+      <label class="upload-btn">
+        📂 Choose Files
+        <input type="file" id="fileInput" accept=".json" multiple hidden>
+      </label>
+      <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
+      <button onclick="exportAllData()" class="export-btn" title="Backup all data">💾 Backup</button>
+      
+      <div id="bulkControls" style="display: none;" class="bulk-controls ">
+        <button class="bulk-delete delete-btn">🗑️ Delete Selected</button>
+        <button class="bulk-export export-btn">📤 Export to .Md</button>
+        <button class="bulk-pin pin-btn">📌 Pin/Unpin</button>
+      </div>
+    </div>
 
-</main>
+    <section id="chatContainer" class="chat-container"></section>
 
-  <script src="/assets/js/chat-uploader.js"></script>
+  </main>
+
+  <!-- Blur overlay for search -->
+  <div id="search-float-blur"></div>
+
+  <script type="module" src="/assets/js/app.js"></script>
 
 </body>
 </html>

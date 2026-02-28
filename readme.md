@@ -1,134 +1,97 @@
-logs - ChatGPT
---------------
+# logs - ChatGPT
 
 A personal tool to view and organize your ChatGPT conversations. It turns exported `.json` files into clean, collapsible chat views right in the browser — fully client-side, private, and mobile-friendly.
 
-🚧 **Status**: Actively maintained — Core features are stable, and new improvements are ongoing.
+**🚀 Latest:** Now uses IndexedDB for 50MB+ storage (was 5MB localStorage limit).
 
-* * *
+---
 
-What is this?
--------------
+## What is this?
 
-This is a browser-based interface for browsing your ChatGPT history. It currently supports:
+This is a browser-based interface for browsing your ChatGPT history. It supports:
 
-*   Uploading your `conversations.json` file from ChatGPT
-    
-*   Browsing parsed chats instantly in your browser
-    
-*   Deleting, exporting, and managing chats via bulk-edit mode
-    
+- ✅ Uploading your `conversations.json` file from ChatGPT
+- ✅ **Multiple file imports** — merge several exports together
+- ✅ **Backup & restore** — export your entire database as JSON
+- ✅ Browsing parsed chats instantly in your browser
+- ✅ **Full-text search** with debounced input
+- ✅ **Folder view** — organize chats by date groups
+- ✅ **Pinning** — keep important chats at the top
+- ✅ Bulk delete and export to Markdown
+- ✅ Mobile-friendly design with dark mode
 
-Optionally, you can also use Ruby scripts to generate static `.md` files for long-term archiving, although these are more basic in functionality.
+---
 
-* * *
+## How it works
 
-How it works
-------------
+### Storage
 
-### A. **Frontend (deployed site)**
+The app uses **IndexedDB** (not localStorage) to store your chats locally in your browser. This means:
 
-The main deployed version at [log.syazarilasyraf.com](https://log.syazarilasyraf.com):
+- **~50MB+ capacity** (varies by browser)
+- **Persistent storage** — survives browser restarts
+- **Structured data** — faster queries and better organization
 
-*   Accepts `conversations.json` uploads only
-    
-*   Parses the file entirely in-browser using JavaScript
-    
-*   Stores parsed chats in `localStorage`
-    
-*   Displays chats in a collapsible Q&A layout with:
-    
-    *   Sidebar grouping by date (Today, Yesterday, Last 7 Days, etc.)
-        
-    *   Bulk editing tools: select, delete, export
-        
-    *   Markdown export with YAML front matter
-        
+### Migration
 
-* * *
+If you have data from the old localStorage version, it will be **automatically migrated** to IndexedDB on first load. The old data is then cleared from localStorage.
 
-### B. **Backend (manual scripts)**
+---
 
-If you'd rather process things manually or archive chat logs as Markdown:
+## File Structure
 
-#### 1\. `extract_chats.rb`
+```
+assets/
+  js/
+    app.js        # Main application (UI, event handling)
+    storage.js    # IndexedDB operations + migration
+    parser.js     # ChatGPT JSON parsing
+  style.css       # Styles
 
-*   Place your `conversations.json` file in the **project root**
-    
-*   Run:
-    
-    ```bash
-    ruby extract_chats.rb conversations.json
-    ```
-    
-*   This will generate structured `.md` files under `_chats/`
-    
+_layouts/
+  default.html    # Main app layout
 
-#### 2\. `process_uploads.rb`
+_archive/         # Old code (Ruby scripts, old JS)
+```
 
-*   Export `.md` files using the [ExportGPT Chrome extension](https://chromewebstore.google.com/detail/exportgpt-export-chatgpt/jamcijfplmgbngnppdhmbbogjebgfimn)
-    
-*   Move them to the `/upload/` directory
-    
-*   Run:
-    
-    ```bash
-    ruby process_uploads.rb
-    ```
-    
+---
 
-These `.md` files are rendered with a simpler layout and don’t include features like bulk editing or client-side export — just basic collapsible chats using Jekyll’s `chat.html` layout.
+## Development
 
-* * *
+### Local testing
 
-How to run the static version
------------------------------
+```bash
+# Simple HTTP server (Python 3)
+python -m http.server 8000
 
-If you’re using Jekyll to view `.md` files:
+# Or use VS Code Live Server extension
+```
 
-1.  Install dependencies:
-    
-    ```bash
-    bundle install --path vendor/bundle
-    ```
-    
-2.  Build and serve locally:
-    
-    ```bash
-    bundle exec jekyll build
-    bundle exec jekyll serve
-    ```
-    
-3.  Visit [http://localhost:4000](http://localhost:4000)
-    
+### Deployment
 
-* * *
+The site is automatically deployed to Netlify on push to `main`.
 
-Features (Deployed Version)
----------------------------
+---
 
-*   ✅ Upload `conversations.json` file
-    
-*   ✅ Parses in-browser, no server needed
-    
-*   ✅ Bulk delete and export features
-    
-*   ✅ Markdown export with YAML front matter
-    
-*   ✅ Sidebar with dynamic time-grouped navigation
-    
-*   ✅ Mobile-friendly design and dark mode
-    
+## Upcoming Features
 
-* * *
+- [ ] Keyboard shortcuts (⌘K search)
+- [ ] Fuzzy search (Fuse.js)
+- [ ] Tagging system
+- [ ] Chat statistics dashboard
+- [ ] Virtual scrolling for long chats
+- [ ] PWA support
 
-Future ideas
-------------
-    
-*   🧠 Smart summaries for each chat
-    
-*   📅 Calendar view or tag-based sorting
-    
-*   🔄 Backup & restore localStorage as file
-    
-*   ☁️ Optional encrypted sync across devices
+---
+
+## Privacy
+
+- **Zero data leaves your browser.** 
+- No analytics, no tracking, no server.
+- Your ChatGPT data stays on your device.
+
+---
+
+## License
+
+MIT
