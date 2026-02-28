@@ -6,7 +6,8 @@
   "description": "Automatically save your ChatGPT conversations to ChatLog",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "downloads"
   ],
   "host_permissions": [
     "https://chat.openai.com/*",

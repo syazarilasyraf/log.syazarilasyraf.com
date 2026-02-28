@@ -64,14 +64,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       const result = await chrome.runtime.sendMessage({ type: 'EXPORT_ALL' });
       
       if (result.success) {
-        // Download the file
+        // Download the file using fallback method
         const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        await chrome.downloads.download({
-          url: url,
-          filename: `chatlog-extension-${new Date().toISOString().split('T')[0]}.json`,
-          saveAs: true
-        });
+        
+        // Try chrome.downloads first, fallback to anchor element
+        try {
+          if (chrome.downloads && chrome.downloads.download) {
+            await chrome.downloads.download({
+              url: url,
+              filename: `chatlog-extension-${new Date().toISOString().split('T')[0]}.json`,
+              saveAs: true
+            });
+          } else {
+            throw new Error('downloads API not available');
+          }
+        } catch (downloadErr) {
+          // Fallback: use anchor element
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `chatlog-extension-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
         
         showSuccess(`Exported ${result.count} conversations!`);
       } else {
