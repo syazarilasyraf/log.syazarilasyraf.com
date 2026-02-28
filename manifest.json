@@ -1,0 +1,22 @@
+{
+  "name": "ChatLog - ChatGPT Conversation Viewer",
+  "short_name": "ChatLog",
+  "description": "View and organize your ChatGPT conversations privately in your browser",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}

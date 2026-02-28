@@ -12,6 +12,7 @@ import {
 } from './storage.js';
 
 import { parseJSONChats, mergeChats } from './parser.js';
+import { VirtualList } from './virtual-list.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -136,6 +137,7 @@ async function handleFileSelect(e) {
   }
 
   if (totalImported > 0) {
+    resetSearchIndex(); // Reset fuzzy search cache
     await renderChatList();
     alert(`Successfully imported ${totalImported} chat(s).`);
   }
@@ -318,6 +320,9 @@ function renderFolderView(container, sections) {
 }
 
 // ==================== CHAT DISPLAY ====================
+let currentVirtualList = null;
+const VIRTUAL_SCROLL_THRESHOLD = 50; // Use virtual scrolling for 50+ messages
+
 async function displayChat(index) {
   const chats = await getStoredChats();
   const chat = chats[index];
@@ -325,6 +330,12 @@ async function displayChat(index) {
   
   if (!chat || !container) return;
   container.innerHTML = '';
+  
+  // Cleanup previous virtual list
+  if (currentVirtualList) {
+    currentVirtualList.destroy();
+    currentVirtualList = null;
+  }
 
   const metadata = {
     title: chat.title || `Chat ${index + 1}`,
@@ -334,47 +345,97 @@ async function displayChat(index) {
     messageCount: chat.messages?.length || 0
   };
 
-  const html = buildChatHTML(metadata, chat.messages, index);
-  container.innerHTML = html;
+  // Build metadata section (always static)
+  container.innerHTML = buildMetadataHTML(metadata);
 
-  // Attach delete handlers
-  container.querySelectorAll('.delete-msg-btn').forEach(btn => {
-    setupDeleteHandler(btn, index);
-  });
+  // Messages section
+  if (!chat.messages || chat.messages.length === 0) {
+    container.innerHTML += '<p><em>No messages in this chat.</em></p>';
+    return;
+  }
+
+  // For small chats: render normally
+  // For large chats: use virtual scrolling
+  if (chat.messages.length <= VIRTUAL_SCROLL_THRESHOLD) {
+    renderMessagesStatic(container, chat.messages, index);
+  } else {
+    renderMessagesVirtual(container, chat.messages, index);
+  }
 }
 
-function buildChatHTML(metadata, messages, chatIndex) {
+function buildMetadataHTML(metadata) {
   const link = `https://chat.openai.com/c/${metadata.id}`;
   const created = new Date(metadata.createdAt).toLocaleString();
 
-  let md = `<details open class="metadata-box">
-    <summary>Metadata</summary>
-    <pre><code>${escapeHtml(JSON.stringify(metadata, null, 2))}</code></pre>
-  </details>
+  return `
+    <details open class="metadata-box">
+      <summary>Metadata</summary>
+      <pre><code>${escapeHtml(JSON.stringify(metadata, null, 2))}</code></pre>
+    </details>
+    <p><em>Chat started ${created}</em> · <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a></p>
+    <hr>
+    <p style="color: #888; font-size: 0.9em;">
+      ${metadata.messageCount} messages 
+      ${metadata.messageCount > VIRTUAL_SCROLL_THRESHOLD ? '(virtual scrolling enabled)' : ''}
+    </p>
+  `;
+}
 
-  <p><em>Chat started ${created}</em> · <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a></p>
-  <hr>`;
+function renderMessagesStatic(container, messages, chatIndex) {
+  messages.forEach((msg, i) => {
+    const msgEl = createMessageElement(msg, i, chatIndex);
+    container.appendChild(msgEl);
+  });
+}
 
-  if (!messages || messages.length === 0) {
-    md += '<p><em>No messages in this chat.</em></p>';
-  } else {
-    messages.forEach((msg, i) => {
-      const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
-      const speakerClass = msg.role === 'user' ? 'you' : 'chatgpt';
-      const content = escapeHtml(msg.content).split('\n').map(line => `> ${line}`).join('\n');
+function renderMessagesVirtual(container, messages, chatIndex) {
+  // Create virtual scroll container
+  const virtualContainer = document.createElement('div');
+  virtualContainer.className = 'virtual-scroll-container';
+  virtualContainer.style.height = 'calc(100vh - 300px)'; // Fill remaining viewport
+  container.appendChild(virtualContainer);
 
-      md += `
-<details class="chat-message ${speakerClass}" open>
-  <summary>
-    <strong>${i + 1}. ${speaker}</strong>
-    <button class="delete-msg-btn" data-msg-index="${i}" title="Delete message">×</button>
-  </summary>
-  <div class="message-content">${marked.parse(content)}</div>
-</details>`;
-    });
-  }
+  currentVirtualList = new VirtualList(virtualContainer, {
+    itemHeight: 120, // Estimated message height
+    bufferSize: 5,
+    renderFn: (msg, index) => createMessageElement(msg, index, chatIndex)
+  });
 
-  return md;
+  currentVirtualList.setItems(messages);
+}
+
+function createMessageElement(msg, index, chatIndex) {
+  const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
+  const speakerClass = msg.role === 'user' ? 'you' : 'chatgpt';
+  const content = escapeHtml(msg.content).split('\n').map(line => `> ${line}`).join('\n');
+
+  const details = document.createElement('details');
+  details.className = `chat-message ${speakerClass}`;
+  details.open = true;
+  details.style.marginBottom = '1em';
+  details.style.border = '1px solid #333';
+  details.style.borderRadius = '6px';
+
+  const summary = document.createElement('summary');
+  summary.innerHTML = `
+    <strong>${index + 1}. ${speaker}</strong>
+    <button class="delete-msg-btn" data-msg-index="${index}" title="Delete message" 
+            style="float: right; background: none; border: none; color: #ff6666; cursor: pointer;">×</button>
+  `;
+
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.style.padding = '0.5em';
+  contentDiv.innerHTML = marked.parse(content);
+
+  details.appendChild(summary);
+  details.appendChild(contentDiv);
+
+  // Attach delete handler
+  const deleteBtn = details.querySelector('.delete-msg-btn');
+  setupDeleteHandler(deleteBtn, chatIndex);
+
+  return details;
 }
 
 function setupDeleteHandler(btn, chatIndex) {
@@ -382,6 +443,7 @@ function setupDeleteHandler(btn, chatIndex) {
   
   btn.addEventListener('click', async (e) => {
     e.stopPropagation();
+    e.preventDefault();
     const msgIndex = parseInt(btn.dataset.msgIndex);
 
     if (!confirmDelete) {
@@ -395,6 +457,7 @@ function setupDeleteHandler(btn, chatIndex) {
       }, 3000);
     } else {
       await deleteMessage(chatIndex, msgIndex);
+      // Re-render the chat to reflect changes
       await displayChat(chatIndex);
     }
   });
@@ -406,6 +469,9 @@ async function deleteMessage(chatIndex, msgIndex) {
   
   chats[chatIndex].messages.splice(msgIndex, 1);
   await saveChatsToDB(chats);
+  
+  // Reset search index since content changed
+  resetSearchIndex();
 }
 
 // ==================== BULK OPERATIONS ====================
@@ -454,6 +520,7 @@ async function handleBulkDelete() {
       });
     await savePinnedChats(newPinned);
     
+    resetSearchIndex(); // Reset fuzzy search cache
     await renderChatList();
     confirmDeleteSelected = false;
   }
@@ -573,20 +640,88 @@ function closeSearch() {
   elements.searchResults().innerHTML = '';
 }
 
-async function performSearch(query) {
+// Fuse.js instance for fuzzy search
+let fuseInstance = null;
+
+async function getFuseInstance() {
+  if (fuseInstance) return fuseInstance;
+  
   const chats = await getStoredChats();
-  const resultsByTitle = [];
-  const resultsByContent = [];
+  const fuseData = chats.map((chat, index) => ({
+    index,
+    title: chat.title || '',
+    // Flatten messages for content search
+    content: chat.messages?.map(m => m.content).join(' ') || '',
+    chat
+  }));
 
-  chats.forEach((chat, index) => {
-    const inTitle = chat.title?.toLowerCase().includes(query);
-    const inContent = chat.messages?.some(m => m.content.toLowerCase().includes(query));
-
-    if (inTitle) resultsByTitle.push({ chat, index });
-    else if (inContent) resultsByContent.push({ chat, index, query });
+  fuseInstance = new Fuse(fuseData, {
+    keys: [
+      { name: 'title', weight: 0.6 },
+      { name: 'content', weight: 0.4 }
+    ],
+    threshold: 0.4, // Lower = more strict, higher = more fuzzy
+    includeScore: true,
+    includeMatches: true
   });
 
-  renderSearchResults(resultsByTitle, resultsByContent, query);
+  return fuseInstance;
+}
+
+// Reset fuse when data changes
+export function resetSearchIndex() {
+  fuseInstance = null;
+}
+
+async function performSearch(query) {
+  const fuse = await getFuseInstance();
+  const results = fuse.search(query);
+  
+  // Split by match type for UI
+  const byTitle = [];
+  const byContent = [];
+
+  results.forEach(result => {
+    const match = result.matches?.[0];
+    if (match?.key === 'title') {
+      byTitle.push({ 
+        chat: result.item.chat, 
+        index: result.item.index,
+        matches: result.matches 
+      });
+    } else {
+      byContent.push({ 
+        chat: result.item.chat, 
+        index: result.item.index, 
+        query,
+        matches: result.matches 
+      });
+    }
+  });
+
+  renderSearchResults(byTitle, byContent, query);
+}
+
+function highlightMatches(text, matches, key) {
+  if (!matches) return escapeHtml(text);
+  
+  const match = matches.find(m => m.key === key);
+  if (!match) return escapeHtml(text);
+
+  let result = '';
+  let lastIndex = 0;
+  
+  // Sort indices by start position
+  const indices = match.indices.sort((a, b) => a[0] - b[0]);
+  
+  indices.forEach(([start, end]) => {
+    result += escapeHtml(text.slice(lastIndex, start));
+    result += `<mark>${escapeHtml(text.slice(start, end + 1))}</mark>`;
+    lastIndex = end + 1;
+  });
+  
+  result += escapeHtml(text.slice(lastIndex));
+  return result;
 }
 
 function renderSearchResults(byTitle, byContent, query) {
@@ -598,19 +733,41 @@ function renderSearchResults(byTitle, byContent, query) {
     return;
   }
 
-  const createResult = ({ chat, index }, snippet = null) => {
+  const createResult = ({ chat, index, matches }) => {
     const div = document.createElement('div');
     div.className = 'search-result';
     
-    const title = document.createElement('div');
-    title.className = 'result-title';
-    title.textContent = chat.title || `Chat ${index + 1}`;
-    div.appendChild(title);
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'result-title';
+    
+    // Highlight title matches
+    const titleMatch = matches?.find(m => m.key === 'title');
+    if (titleMatch) {
+      titleDiv.innerHTML = highlightMatches(chat.title || `Chat ${index + 1}`, matches, 'title');
+    } else {
+      titleDiv.textContent = chat.title || `Chat ${index + 1}`;
+    }
+    div.appendChild(titleDiv);
 
-    if (snippet) {
+    // Show content snippet for content matches
+    const contentMatch = matches?.find(m => m.key === 'content');
+    if (contentMatch) {
       const snip = document.createElement('div');
       snip.className = 'result-snippet';
-      snip.textContent = snippet;
+      
+      // Get the first matched content snippet
+      const [start, end] = contentMatch.indices[0];
+      const content = chat.messages?.map(m => m.content).join(' ') || '';
+      const snippetStart = Math.max(0, start - 40);
+      const snippetEnd = Math.min(content.length, end + 40);
+      let snippetText = content.slice(snippetStart, snippetEnd);
+      if (snippetStart > 0) snippetText = '…' + snippetText;
+      if (snippetEnd < content.length) snippetText += '…';
+      
+      snip.innerHTML = highlightMatches(snippetText, [{
+        key: 'content',
+        indices: [[start - snippetStart, end - snippetStart]]
+      }], 'content');
       div.appendChild(snip);
     }
 
@@ -626,32 +783,17 @@ function renderSearchResults(byTitle, byContent, query) {
     return div;
   };
 
-  const addSection = (label, items, showSnippets = false) => {
+  const addSection = (label, items) => {
     if (!items.length) return;
     const header = document.createElement('h3');
     header.textContent = label;
     header.className = 'search-section-title';
     container.appendChild(header);
-
-    items.forEach(item => {
-      let snippet = null;
-      if (showSnippets && item.query) {
-        const match = item.chat.messages?.find(m => 
-          m.content.toLowerCase().includes(item.query)
-        );
-        if (match) {
-          const idx = match.content.toLowerCase().indexOf(item.query);
-          const start = Math.max(0, idx - 30);
-          const end = Math.min(match.content.length, idx + 30);
-          snippet = (start > 0 ? '…' : '') + match.content.slice(start, end).trim() + (end < match.content.length ? '…' : '');
-        }
-      }
-      container.appendChild(createResult(item, snippet));
-    });
+    items.forEach(item => container.appendChild(createResult(item)));
   };
 
   addSection('Matches in Title', byTitle);
-  addSection('Matches in Messages', byContent, true);
+  addSection('Matches in Messages', byContent);
 }
 
 // ==================== GLOBAL ACTIONS ====================
@@ -670,6 +812,7 @@ window.clearAllChats = async function(btn) {
     }, 3000);
   } else {
     await clearChatsInDB();
+    resetSearchIndex(); // Reset fuzzy search cache
     await renderChatList();
     confirmClearAll = false;
   }
@@ -685,9 +828,37 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// ==================== PWA SERVICE WORKER ====================
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('[PWA] Service Worker registered:', registration.scope);
+        
+        // Check for updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[PWA] New version available');
+              // Could show update notification here
+            }
+          });
+        });
+      })
+      .catch(error => {
+        console.error('[PWA] Service Worker registration failed:', error);
+      });
+  }
+}
+
 // ==================== START ====================
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+    registerServiceWorker();
+  });
 } else {
   init();
+  registerServiceWorker();
 }

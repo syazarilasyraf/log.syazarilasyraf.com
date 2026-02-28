@@ -621,3 +621,21 @@
       font-size: 0.9em;
       color: var(--link);
     }
+
+    /* Virtual scrolling container */
+    .virtual-scroll-container {
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+    }
+
+    /* Highlight for search matches */
+    mark {
+      background: #ffd700;
+      color: #000;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
