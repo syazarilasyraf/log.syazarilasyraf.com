@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      min-height: 200px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #121212;
+      color: #e0e0e0;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #1e1e1e;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4CAF50;
+      animation: pulse 2s infinite;
+    }
+
+    .status-indicator.inactive {
+      background: #666;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stat-box {
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #8ab4f8;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn-primary {
+      background: #8ab4f8;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #5a9cf0;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #8ab4f8;
+      border: 1px solid #8ab4f8;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(138, 180, 248, 0.1);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: #ff6666;
+      border: 1px solid #ff6666;
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 102, 102, 0.1);
+    }
+
+    .info {
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+
+    .error {
+      background: rgba(255, 102, 102, 0.1);
+      color: #ff6666;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .success {
+      background: rgba(76, 175, 80, 0.1);
+      color: #4CAF50;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .settings {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .toggle {
+      width: 40px;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle.active {
+      background: #4CAF50;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .toggle.active::after {
+      transform: translateX(20px);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span style="font-size: 20px;">📒</span>
+    <h1>ChatLog Extension</h1>
+  </div>
+
+  <div id="status" class="status">
+    <div id="statusIndicator" class="status-indicator inactive"></div>
+    <span id="statusText">Checking...</span>
+  </div>
+
+  <div id="error" class="error"></div>
+  <div id="success" class="success"></div>
+
+  <div class="stats">
+    <div class="stat-box">
+      <div id="convCount" class="stat-value">0</div>
+      <div class="stat-label">Conversations</div>
+    </div>
+    <div class="stat-box">
+      <div id="msgCount" class="stat-value">0</div>
+      <div class="stat-label">Messages</div>
+    </div>
+  </div>
+
+  <button id="exportBtn" class="btn btn-primary">
+    📤 Export to ChatLog App
+  </button>
+
+  <button id="openAppBtn" class="btn btn-secondary">
+    🌐 Open ChatLog App
+  </button>
+
+  <div class="settings">
+    <div class="setting-row">
+      <span>Auto-save</span>
+      <div id="autoSaveToggle" class="toggle active"></div>
+    </div>
+  </div>
+
+  <button id="clearBtn" class="btn btn-danger" style="margin-top: 8px;">
+    🗑️ Clear All Data
+  </button>
+
+  <div class="info">
+    Conversations auto-save as you chat on ChatGPT
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

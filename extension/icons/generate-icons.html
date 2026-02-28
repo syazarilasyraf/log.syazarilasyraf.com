@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate ChatLog Icons</title>
+</head>
+<body>
+  <h1>Icon Generator for ChatLog Extension</h1>
+  <p>Right-click each canvas and save as PNG:</p>
+  
+  <div id="icons"></div>
+
+  <script>
+    const sizes = [16, 32, 48, 128];
+    const container = document.getElementById('icons');
+
+    sizes.forEach(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.style.border = '1px solid #ccc';
+      canvas.style.margin = '10px';
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = '#121212';
+      ctx.fillRect(0, 0, size, size);
+      
+      // Rounded corners
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      // Emoji or icon
+      ctx.font = `${size * 0.6}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('📒', size / 2, size / 2 + size * 0.05);
+      
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'inline-block';
+      wrapper.style.textAlign = 'center';
+      
+      const label = document.createElement('p');
+      label.textContent = `icon${size}.png (${size}x${size})`;
+      
+      wrapper.appendChild(canvas);
+      wrapper.appendChild(label);
+      container.appendChild(wrapper);
+    });
+  </script>
+</body>
+</html>

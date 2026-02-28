@@ -1,40 +1,64 @@
-# logs - ChatGPT
+# ChatLog - ChatGPT Conversation Manager
 
-A personal tool to view and organize your ChatGPT conversations. It turns exported `.json` files into clean, collapsible chat views right in the browser — fully client-side, private, and mobile-friendly.
+A powerful, privacy-focused tool to view, organize, and analyze your ChatGPT conversations. Fully client-side with optional cloud sync and browser extension.
 
-**🚀 Latest:** Now uses IndexedDB for 50MB+ storage (was 5MB localStorage limit).
-
----
-
-## What is this?
-
-This is a browser-based interface for browsing your ChatGPT history. It supports:
-
-- ✅ Uploading your `conversations.json` file from ChatGPT
-- ✅ **Multiple file imports** — merge several exports together
-- ✅ **Backup & restore** — export your entire database as JSON
-- ✅ Browsing parsed chats instantly in your browser
-- ✅ **Full-text search** with debounced input
-- ✅ **Folder view** — organize chats by date groups
-- ✅ **Pinning** — keep important chats at the top
-- ✅ Bulk delete and export to Markdown
-- ✅ Mobile-friendly design with dark mode
+**🚀 Live:** https://log.syazarilasyraf.com
 
 ---
 
-## How it works
+## Features
 
-### Storage
+### Core
+- 📁 **Import** - Upload `conversations.json` from ChatGPT export
+- 🔍 **Fuzzy Search** - Typo-tolerant search with highlighted matches
+- 🏷️ **Tagging** - Organize chats with custom tags
+- 📊 **Statistics** - Insights on your AI usage patterns
+- 💾 **50MB+ Storage** - IndexedDB (not limited 5MB localStorage)
 
-The app uses **IndexedDB** (not localStorage) to store your chats locally in your browser. This means:
+### Advanced
+- 🌐 **Cloud Sync** - Cross-device backup via Supabase
+- 🖥️ **Virtual Scrolling** - Smooth performance with 1000+ message chats
+- 📱 **PWA** - Install as app, works offline
+- 🔌 **Browser Extension** - Auto-save as you chat (see below)
 
-- **~50MB+ capacity** (varies by browser)
-- **Persistent storage** — survives browser restarts
-- **Structured data** — faster queries and better organization
+---
 
-### Migration
+## Browser Extension (Auto-Save)
 
-If you have data from the old localStorage version, it will be **automatically migrated** to IndexedDB on first load. The old data is then cleared from localStorage.
+**Never manually export again.** The ChatLog extension automatically saves conversations as you chat.
+
+### Installation
+
+**Option 1: Developer Mode (Available Now)**
+1. Download/clone this repo
+2. Open Chrome → `chrome://extensions` → Enable "Developer mode"
+3. Click "Load unpacked" → Select the `extension/` folder
+4. Pin 📒 to your toolbar
+
+**Option 2: Chrome Web Store (Coming Soon)**
+
+### How It Works
+- Automatically detects ChatGPT conversations
+- Saves in real-time as you chat
+- One-click export to ChatLog app
+- Stores locally in your browser (privacy-first)
+
+See [extension/README.md](extension/README.md) for details.
+
+---
+
+## Quick Start
+
+### Web App
+1. Go to https://log.syazarilasyraf.com
+2. Upload your `conversations.json` (from ChatGPT settings → Data controls → Export)
+3. Or use the browser extension for auto-save
+
+### Cloud Sync Setup
+1. Create free account at [supabase.com](https://supabase.com)
+2. New project → SQL Editor → Run the SQL from `assets/js/sync.js` comments
+3. Copy Project URL and anon key
+4. Click ☁️ Sync in app → Paste credentials → Connect
 
 ---
 
@@ -43,55 +67,82 @@ If you have data from the old localStorage version, it will be **automatically m
 ```
 assets/
   js/
-    app.js        # Main application (UI, event handling)
-    storage.js    # IndexedDB operations + migration
-    parser.js     # ChatGPT JSON parsing
-  style.css       # Styles
+    app.js           # Main UI
+    storage.js       # IndexedDB layer
+    parser.js        # ChatGPT JSON parsing
+    virtual-list.js  # Performance for large chats
+    tags.js          # Tagging system
+    stats.js         # Analytics
+    sync.js          # Supabase cloud sync
+  style.css          # Styles
+
+extension/           # Browser extension
+  manifest.json
+  content.js         # ChatGPT page scraper
+  background.js      # Extension service worker
+  popup.html/js      # Extension UI
+  README.md
 
 _layouts/
-  default.html    # Main app layout
-
-_archive/         # Old code (Ruby scripts, old JS)
+  default.html       # Main app layout
 ```
 
 ---
 
-## Development
+## Architecture Highlights
 
-### Local testing
-
-```bash
-# Simple HTTP server (Python 3)
-python -m http.server 8000
-
-# Or use VS Code Live Server extension
-```
-
-### Deployment
-
-The site is automatically deployed to Netlify on push to `main`.
-
----
-
-## Upcoming Features
-
-- [ ] Keyboard shortcuts (⌘K search)
-- [ ] Fuzzy search (Fuse.js)
-- [ ] Tagging system
-- [ ] Chat statistics dashboard
-- [ ] Virtual scrolling for long chats
-- [ ] PWA support
+| Feature | Implementation |
+|---------|---------------|
+| Storage | IndexedDB (~50MB) |
+| Search | Fuse.js (fuzzy) |
+| Cloud | Supabase (optional) |
+| Extension | Manifest V3, content script |
+| PWA | Service Worker, offline-first |
 
 ---
 
 ## Privacy
 
-- **Zero data leaves your browser.** 
-- No analytics, no tracking, no server.
-- Your ChatGPT data stays on your device.
+- **Zero tracking** - No Google Analytics, no cookies
+- **Local-first** - Data stays in your browser by default
+- **Optional cloud** - Only if you configure Supabase yourself
+- **Open source** - You can audit every line
+
+---
+
+## Development
+
+```bash
+# Local testing
+python -m http.server 8000
+
+# Extension development
+# Load extension/ folder as unpacked in Chrome
+
+# Deploy
+# Pushes to GitHub → Auto-deploys to Netlify
+git push origin main
+```
+
+---
+
+## Roadmap
+
+- [x] IndexedDB storage
+- [x] Fuzzy search
+- [x] Virtual scrolling
+- [x] PWA support
+- [x] Tagging system
+- [x] Statistics dashboard
+- [x] Cloud sync (Supabase)
+- [x] Browser extension
+- [ ] AI auto-tagging (OpenAI API)
+- [ ] Claude/Gemini/Perplexity import
+- [ ] Chat sharing (public links)
+- [ ] Mobile apps (Capacitor)
 
 ---
 
 ## License
 
-MIT
+MIT © [syazarilasyraf](https://github.com/syazarilasyraf)
