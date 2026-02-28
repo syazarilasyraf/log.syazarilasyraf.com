@@ -112,7 +112,7 @@ async function handleFileSelect(e) {
   const files = Array.from(e.target.files);
   if (files.length === 0) return;
 
-  const existingChats = await getStoredChats();
+  let existingChats = await getStoredChats();
   let totalImported = 0;
 
   for (const file of files) {
