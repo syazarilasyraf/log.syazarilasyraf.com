@@ -2,29 +2,84 @@ require 'json'
 require 'fileutils'
 require 'time'
 
-json_path = "conversations.json"
-output_dir = "_chats"
-FileUtils.mkdir_p(output_dir)
+# -----------------------------
+# Config
+# -----------------------------
+JSON_PATH  = "conversations.json"
+OUTPUT_DIR = "_chats"
 
-data = JSON.parse(File.read(json_path))
+FileUtils.mkdir_p(OUTPUT_DIR)
 
+# -----------------------------
+# Load + sort conversations
+# -----------------------------
+data = JSON.parse(File.read(JSON_PATH))
+
+# Sort chats from OLD → NEW
+data.sort_by! { |conv| conv["create_time"] || 0 }
+
+# -----------------------------
+# Helpers
+# -----------------------------
+def safe_slug(text)
+  text
+    .downcase
+    .strip
+    .gsub(/[^\w\s\-]/, '')
+    .gsub(/\s+/, '-')
+    .gsub(/-+/, '-')
+end
+
+def extract_messages(conv)
+  conv
+    .fetch("mapping", {})
+    .values
+    .map { |m| m["message"] }
+    .compact
+end
+
+def extract_title(conv, messages, index)
+  return conv["title"].strip if conv["title"] && !conv["title"].strip.empty?
+
+  first_user_msg =
+    messages.find { |m| m.dig("author", "role") == "user" }
+      &.dig("content", "parts", 0)
+
+  first_user_msg ? first_user_msg.slice(0, 50) : "chat-#{index}"
+end
+
+# -----------------------------
+# Main export loop
+# -----------------------------
 data.each_with_index do |conv, index|
-  messages = conv["mapping"].values.map { |m| m["message"] }.compact
+  messages = extract_messages(conv)
+  next if messages.empty?
 
-  title_msg = messages.find { |m| m["author"]["role"] == "user" }
-  next unless title_msg
+  title = extract_title(conv, messages, index)
+  timestamp =
+    if conv["create_time"]
+      Time.at(conv["create_time"]).iso8601
+    else
+      Time.now.iso8601
+    end
 
-  title = title_msg["content"]["parts"]&.first&.slice(0, 50)&.gsub(/[^\w\s\-]/, '')&.strip || "chat-#{index}"
-  slug = title.downcase.gsub(/\s+/, '-').gsub(/[^a-z0-9\-]/, '')
-  filename = "#{output_dir}/#{slug}.md"
-  timestamp = Time.at(conv["create_time"]).iso8601 rescue Time.now.iso8601
+  slug     = safe_slug(title)
+  date_tag = timestamp[0..9] # YYYY-MM-DD
+  filename = "#{OUTPUT_DIR}/#{date_tag}-#{slug}.md"
 
   chat_html = messages.map do |msg|
-    next unless msg["author"] && msg["content"] && msg["content"]["parts"]
-    role = msg["author"]["role"]
+    role = msg.dig("author", "role")
+    parts = msg.dig("content", "parts")
+    next unless role && parts
+
     label = role == "user" ? "you" : role
-    content = msg["content"]["parts"].join("\n").gsub('~~~', '') # prevent nested codeblocks
-    "<div class=\"chat-msg\" data-role=\"#{label}\">\n#{content.strip}\n</div>"
+    content = parts.join("\n").gsub('~~~', '') # prevent nested code blocks
+
+    <<~HTML
+      <div class="chat-msg" data-role="#{label}">
+      #{content.strip}
+      </div>
+    HTML
   end.compact.join("\n\n")
 
   File.write(filename, <<~MARKDOWN)
@@ -41,3 +96,5 @@ data.each_with_index do |conv, index|
 
   puts "✅ Created #{filename}"
 end
+
+puts "\n🎉 Export complete. Chats written to #{OUTPUT_DIR}/"
