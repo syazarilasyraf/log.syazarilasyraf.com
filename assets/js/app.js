@@ -44,17 +44,18 @@ import {
   estimateTagCost
 } from './ai.js';
 import {
-  getSummaryPrompt,
-  setSummaryPrompt,
-  getSummarySettings,
-  setSummarySettings,
-  getWeeklyConversations,
-  generateWeeklySummary,
-  exportSummaryAsMarkdown,
-  copySummaryToClipboard,
-  generateEmailLink,
-  estimateWeeklySummaryCost
-} from './weekly-summary.js';
+  DURATION_PRESETS,
+  getBatchPrompt,
+  setBatchPrompt,
+  getSinglePrompt,
+  setSinglePrompt,
+  getConversationsForDuration,
+  generateBatchSummary,
+  generateSingleSummary,
+  exportSummaryAsMarkdown as exportFlexSummary,
+  copySummaryToClipboard as copyFlexSummary,
+  estimateCost as estimateSummaryCost
+} from './summarizer.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -523,10 +524,21 @@ async function buildMetadataHTML(metadata, chatIndex) {
       <pre><code>${escapeHtml(JSON.stringify(metadata, null, 2))}</code></pre>
     </details>
     <p><em>Chat started ${created}</em> · <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a></p>
+    
+    ${aiEnabled ? `
+    <div style="margin-bottom: 1rem;">
+      <button id="summarizeBtn" onclick="summarizeCurrentChat(${chatIndex})" class="ai-tag-btn" style="margin-right: 0.5rem;">
+        📝 Summarize
+      </button>
+      <button id="autoTagBtn" onclick="autoTagChat(${chatIndex})" class="ai-tag-btn">
+        🏷️ Auto-Tag
+      </button>
+    </div>
+    ` : ''}
+    
     <div class="tag-editor" data-chat-index="${chatIndex}">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
         <span style="color: #888;">Tags:</span>
-        ${aiEnabled ? `<button id="autoTagBtn" onclick="autoTagChat(${chatIndex})" class="ai-tag-btn" title="AI-powered auto-tagging">🏷️ Auto-Tag</button>` : ''}
       </div>
       <div class="current-tags">
         ${tags.map(t => `<span class="tag removable" data-tag="${escapeHtml(t)}">${escapeHtml(t)} ×</span>`).join('')}
@@ -967,9 +979,6 @@ window.showAISettings = async function() {
   const hasKey = hasApiKey();
   const apiKey = getApiKey();
   const maskedKey = apiKey ? `${apiKey.substring(0, 10)}...${apiKey.slice(-4)}` : '';
-  const currentTagPrompt = getTagPrompt ? getTagPrompt() : 'Default prompt not available';
-  const currentSummaryPrompt = getSummaryPrompt();
-  const summarySettings = getSummarySettings();
   
   container.innerHTML = `
     <div style="max-width: 700px; margin: 0 auto;">
@@ -1001,58 +1010,95 @@ window.showAISettings = async function() {
       </div>
       
       ${hasKey ? `
-      <!-- Custom Prompts Section -->
+      <!-- Flexible Summary Section -->
       <div class="ai-section">
-        <h3>🎨 Custom Prompts</h3>
+        <h3>📅 Generate Summary</h3>
         <p style="color: #888; margin-bottom: 1rem;">
-          Customize the AI prompts for tagging and summarization.
+          Summarize conversations from any time period. All processing happens client-side.
         </p>
         
-        <details style="margin-bottom: 1rem;">
-          <summary style="cursor: pointer; color: #888;">Edit Tagging Prompt</summary>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; color: #888; margin-bottom: 0.5rem;">Select Period:</label>
+          <select id="summaryPeriod" onchange="updateSummaryPreview()" 
+                  style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="last7" selected>Last 7 Days</option>
+            <option value="last30">Last 30 Days</option>
+            <option value="thisMonth">This Month</option>
+            <option value="lastMonth">Last Month</option>
+            <option value="all">All Time</option>
+            <option value="custom">Custom Range...</option>
+          </select>
+        </div>
+        
+        <div id="customDateRange" style="display: none; margin-bottom: 1rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div>
+              <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Start Date</label>
+              <input type="date" id="customStartDate" style="width: 100%; padding: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+            <div>
+              <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">End Date</label>
+              <input type="date" id="customEndDate" style="width: 100%; padding: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+            </div>
+          </div>
+        </div>
+        
+        <div id="summaryPreview" style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+          Loading...
+        </div>
+        
+        <button onclick="generateFlexibleSummary()" class="upload-btn" style="margin-bottom: 1rem;">
+          📝 Generate Summary
+        </button>
+        
+        <details style="margin-top: 1rem;">
+          <summary style="cursor: pointer; color: #888;">Customize Batch Summary Prompt</summary>
           <div style="margin-top: 1rem;">
-            <textarea id="tagPrompt" rows="8" 
+            <textarea id="batchPrompt" rows="8" 
                       style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 0.9em;"
-                      placeholder="Enter your custom tagging prompt...">${escapeHtml(getTagPrompt())}</textarea>
+                      placeholder="Enter your custom batch summary prompt...">${escapeHtml(getBatchPrompt())}</textarea>
             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-              <button onclick="saveTagPrompt()" class="ai-tag-btn">Save Tag Prompt</button>
-              <button onclick="resetTagPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset</button>
+              <button onclick="saveBatchPrompt()" class="ai-tag-btn">Save Prompt</button>
+              <button onclick="resetBatchPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset</button>
             </div>
             <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">
-              Variables: {{title}}, {{messages}}, {{existingTags}}
+              Variables: {{duration}}, {{conversations}}, {{chatCount}}, {{messageCount}}, {{dateRange}}, {{mostActiveDay}}
             </p>
           </div>
         </details>
       </div>
       
-      <!-- Weekly Summary Section -->
+      <!-- Custom Prompts Section -->
       <div class="ai-section">
-        <h3>📅 Weekly Summary</h3>
-        <p style="color: #888; margin-bottom: 1rem;">
-          Generate a weekly summary of your ChatGPT usage. All processing happens client-side.
-        </p>
+        <h3>🎨 Custom Prompts</h3>
         
-        <div id="weeklyConvCount" style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
-          Loading...
-        </div>
-        
-        <button onclick="generateWeeklySummaryUI()" class="upload-btn" style="margin-bottom: 1rem;">
-          📝 Generate Weekly Summary
-        </button>
-        
-        <details style="margin-top: 1rem;">
-          <summary style="cursor: pointer; color: #888;">Customize Summary Prompt</summary>
+        <details style="margin-bottom: 1rem;">
+          <summary style="cursor: pointer; color: #888;">Edit Tagging Prompt</summary>
           <div style="margin-top: 1rem;">
-            <textarea id="summaryPrompt" rows="10" 
+            <textarea id="tagPrompt" rows="6" 
                       style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 0.9em;"
-                      placeholder="Enter your custom prompt...">${escapeHtml(currentSummaryPrompt)}</textarea>
+                      placeholder="Enter your custom tagging prompt...">${escapeHtml(getTagPrompt())}</textarea>
             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-              <button onclick="saveSummaryPrompt()" class="ai-tag-btn">Save Prompt</button>
-              <button onclick="resetSummaryPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset to Default</button>
+              <button onclick="saveTagPrompt()" class="ai-tag-btn">Save</button>
+              <button onclick="resetTagPrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset</button>
             </div>
-            <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">
-              Variables: {{conversations}}, {{chatCount}}, {{messageCount}}, {{mostActiveDay}}
-            </p>
+            <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">Variables: {{title}}, {{messages}}, {{existingTags}}</p>
+          </div>
+        </details>
+        
+        <details>
+          <summary style="cursor: pointer; color: #888;">Edit Single Chat Summary Prompt</summary>
+          <div style="margin-top: 1rem;">
+            <textarea id="singlePrompt" rows="6" 
+                      style="width: 100%; padding: 0.75rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; font-size: 0.9em;"
+                      placeholder="Enter your custom single chat summary prompt...">${escapeHtml(getSinglePrompt())}</textarea>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+              <button onclick="saveSinglePrompt()" class="ai-tag-btn">Save</button>
+              <button onclick="resetSinglePrompt()" class="delete-btn" style="padding: 4px 12px; font-size: 0.85em;">Reset</button>
+            </div>
+            <p style="color: #888; font-size: 0.85em; margin-top: 0.5rem;">Variables: {{title}}, {{date}}, {{messageCount}}, {{messages}}</p>
           </div>
         </details>
       </div>
@@ -1063,50 +1109,29 @@ window.showAISettings = async function() {
         <h3>Features</h3>
         <ul style="line-height: 1.8; margin: 0; padding-left: 1.5rem;">
           <li><strong>Auto-tagging:</strong> AI suggests relevant tags for your chats</li>
-          <li><strong>Summarization:</strong> Generate concise summaries of long conversations</li>
-          <li><strong>Weekly Summary:</strong> Automated weekly reports of your usage</li>
+          <li><strong>Single Summary:</strong> Summarize any individual conversation</li>
+          <li><strong>Batch Summary:</strong> Summarize any time period (today, week, month, custom)</li>
+          <li><strong>Custom Prompts:</strong> Fully customizable AI prompts</li>
         </ul>
         
         <div style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
           <p style="margin: 0; color: #888; font-size: 0.9em;">
             <strong>Cost estimates:</strong><br>
             • Auto-tagging: ~$0.001 per chat<br>
-            • Weekly summary: ~$0.01-0.05 per week<br>
+            • Single summary: ~$0.003 per conversation<br>
+            • Batch summary: ~$0.01-0.05 depending on period<br>
             You only pay OpenAI for actual usage.
           </p>
         </div>
-      </div>
-      
-      <!-- Privacy Section -->
-      <div class="ai-section">
-        <h3>Privacy</h3>
-        <p style="color: #888; font-size: 0.9em; margin: 0;">
-          • Your API key never leaves your browser (stored in localStorage)<br>
-          • Conversation data is sent directly to OpenAI's API<br>
-          • We don't store or log any of your data<br>
-          • You can remove your key at any time<br>
-          • All AI processing happens client-side in your browser
-        </p>
       </div>
       
       <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
     </div>
   `;
   
-  // Load weekly conversation count if key exists
+  // Load preview if key exists
   if (hasKey) {
-    getWeeklyConversations().then(convs => {
-      const cost = estimateWeeklySummaryCost(convs.length);
-      const countDiv = document.getElementById('weeklyConvCount');
-      if (countDiv) {
-        countDiv.innerHTML = `
-          <p style="margin: 0; color: var(--fg);"><strong>${convs.length}</strong> conversations from the past 7 days</p>
-          <p style="margin: 0.5rem 0 0 0; color: #888; font-size: 0.9em;">
-            Estimated cost for summary: ${cost.note}
-          </p>
-        `;
-      }
-    });
+    updateSummaryPreview();
   }
 };
 
@@ -1156,43 +1181,80 @@ window.resetTagPrompt = function() {
   }
 };
 
-window.saveSummaryPrompt = function() {
-  const prompt = document.getElementById('summaryPrompt').value;
-  setSummaryPrompt(prompt);
-  alert('Summary prompt saved!');
-};
-
-window.resetSummaryPrompt = function() {
-  if (confirm('Reset to default prompt?')) {
-    localStorage.removeItem('weekly_summary_prompt');
-    showAISettings();
+// Flexible Summary UI Functions
+window.updateSummaryPreview = async function() {
+  const period = document.getElementById('summaryPeriod').value;
+  const customDateDiv = document.getElementById('customDateRange');
+  const previewDiv = document.getElementById('summaryPreview');
+  
+  // Show/hide custom date range
+  if (period === 'custom') {
+    customDateDiv.style.display = 'grid';
+    previewDiv.innerHTML = '<p style="color: #888;">Select date range to see preview</p>';
+    return;
+  } else {
+    customDateDiv.style.display = 'none';
+  }
+  
+  try {
+    const { conversations, startDate, endDate } = await getConversationsForDuration(period);
+    const cost = estimateSummaryCost(conversations.length, 'batch');
+    
+    previewDiv.innerHTML = `
+      <p style="margin: 0; color: var(--fg);">
+        <strong>${conversations.length}</strong> conversations found
+      </p>
+      <p style="margin: 0.5rem 0 0 0; color: #888; font-size: 0.9em;">
+        Period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}<br>
+        Estimated cost: ${cost.note}
+      </p>
+    `;
+  } catch (error) {
+    previewDiv.innerHTML = '<p style="color: #ff6666;">Error loading preview</p>';
   }
 };
 
-window.generateWeeklySummaryUI = async function() {
-  const btn = document.querySelector('button[onclick="generateWeeklySummaryUI()"]');
+window.generateFlexibleSummary = async function() {
+  const period = document.getElementById('summaryPeriod').value;
+  const btn = document.querySelector('button[onclick="generateFlexibleSummary()"]');
   const originalText = btn.textContent;
+  
   btn.disabled = true;
   btn.textContent = 'Generating...';
   
   try {
-    const result = await generateWeeklySummary();
+    let result;
+    
+    if (period === 'custom') {
+      const startDate = document.getElementById('customStartDate').value;
+      const endDate = document.getElementById('customEndDate').value;
+      if (!startDate || !endDate) {
+        alert('Please select both start and end dates');
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+      result = await generateBatchSummary('custom', startDate, endDate);
+    } else {
+      result = await generateBatchSummary(period);
+    }
     
     // Show result
     const container = elements.chatContainer();
     container.innerHTML = `
       <div style="max-width: 800px; margin: 0 auto;">
-        <h2>📅 Weekly Summary</h2>
+        <h2>📅 Summary - ${result.durationLabel}</h2>
         <p style="color: #888; margin-bottom: 1rem;">
-          Generated: ${new Date(result.generatedAt).toLocaleString()}
+          Generated: ${new Date(result.generatedAt).toLocaleString()}<br>
+          Period: ${result.startDate.toLocaleDateString()} - ${result.endDate.toLocaleDateString()}
         </p>
         
-        <div class="ai-section" style="white-space: pre-wrap; font-family: system-ui, sans-serif;">
+        <div class="ai-section" style="white-space: pre-wrap;">
           ${marked.parse(result.summary)}
         </div>
         
         <div class="ai-section">
-          <h3>📈 This Week's Stats</h3>
+          <h3>📈 Statistics</h3>
           <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
             <div class="stat-box">
               <div class="stat-value">${result.stats.chatCount}</div>
@@ -1204,22 +1266,20 @@ window.generateWeeklySummaryUI = async function() {
             </div>
             <div class="stat-box">
               <div class="stat-value" style="font-size: 1.2em;">${result.stats.mostActiveDay}</div>
-              <div class="stat-label">Most Active Day</div>
+              <div class="stat-label">Most Active</div>
             </div>
           </div>
         </div>
         
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem;">
-          <button onclick="downloadWeeklySummary()" class="upload-btn">💾 Download as Markdown</button>
-          <button onclick="copyWeeklySummary()" class="export-btn">📋 Copy to Clipboard</button>
-          <button onclick="emailWeeklySummary()" class="ai-tag-btn">📧 Email Summary</button>
-          <button onclick="showAISettings()" class="delete-btn">← Back to AI Settings</button>
+          <button onclick="downloadFlexSummary()" class="upload-btn">💾 Download</button>
+          <button onclick="copyFlexSummary()" class="export-btn">📋 Copy</button>
+          <button onclick="showAISettings()" class="delete-btn">← Back</button>
         </div>
       </div>
     `;
     
-    // Store result for download/copy functions
-    window._lastWeeklySummary = result;
+    window._lastFlexSummary = result;
     
   } catch (error) {
     alert('Error generating summary: ' + error.message);
@@ -1228,34 +1288,114 @@ window.generateWeeklySummaryUI = async function() {
   }
 };
 
-window.downloadWeeklySummary = function() {
-  if (window._lastWeeklySummary) {
-    exportSummaryAsMarkdown(window._lastWeeklySummary);
+window.downloadFlexSummary = function() {
+  if (window._lastFlexSummary) {
+    exportFlexSummary(window._lastFlexSummary, 'batch');
   }
 };
 
-window.copyWeeklySummary = async function() {
-  if (window._lastWeeklySummary) {
-    await copySummaryToClipboard(window._lastWeeklySummary);
-    alert('Summary copied to clipboard!');
+window.copyFlexSummary = async function() {
+  if (window._lastFlexSummary) {
+    await copyFlexSummary(window._lastFlexSummary, 'batch');
+    alert('Copied to clipboard!');
   }
 };
 
-window.emailWeeklySummary = function() {
-  if (!window._lastWeeklySummary) return;
+window.saveBatchPrompt = function() {
+  const prompt = document.getElementById('batchPrompt').value;
+  setBatchPrompt(prompt);
+  alert('Batch summary prompt saved!');
+};
+
+window.resetBatchPrompt = function() {
+  if (confirm('Reset batch summary prompt to default?')) {
+    localStorage.removeItem('flexible_summary_prompt');
+    showAISettings();
+  }
+};
+
+window.saveSinglePrompt = function() {
+  const prompt = document.getElementById('singlePrompt').value;
+  setSinglePrompt(prompt);
+  alert('Single chat summary prompt saved!');
+};
+
+window.resetSinglePrompt = function() {
+  if (confirm('Reset single chat summary prompt to default?')) {
+    localStorage.removeItem('single_chat_summary_prompt');
+    showAISettings();
+  }
+};
+
+// Single chat summary from chat view
+window.summarizeCurrentChat = async function(chatIndex) {
+  const chats = await getStoredChats();
+  const chat = chats[chatIndex];
   
-  const settings = getSummarySettings();
-  if (settings.emailAddress) {
-    const link = generateEmailLink(window._lastWeeklySummary, settings.emailAddress);
-    window.location.href = link;
-  } else {
-    const email = prompt('Enter your email address:');
-    if (email) {
-      settings.emailAddress = email;
-      setSummarySettings(settings);
-      const link = generateEmailLink(window._lastWeeklySummary, email);
-      window.location.href = link;
+  if (!chat) return;
+  
+  const btn = document.getElementById('summarizeBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Summarizing...';
+  }
+  
+  try {
+    const result = await generateSingleSummary(chat);
+    
+    // Show summary in a modal-like view
+    const container = elements.chatContainer();
+    const originalContent = container.innerHTML;
+    
+    container.innerHTML = `
+      <div style="max-width: 700px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2>📝 Summary: ${escapeHtml(chat.title)}</h2>
+          <button onclick="restoreChatView(${chatIndex})" class="export-btn">← Back to Chat</button>
+        </div>
+        
+        <div class="ai-section" style="white-space: pre-wrap; margin-bottom: 1rem;">
+          ${marked.parse(result.summary)}
+        </div>
+        
+        <div style="display: flex; gap: 1rem;">
+          <button onclick="downloadSingleSummary(${chatIndex})" class="upload-btn">💾 Download</button>
+          <button onclick="copySingleSummary()" class="export-btn">📋 Copy</button>
+        </div>
+      </div>
+    `;
+    
+    window._lastSingleSummary = result;
+    window._originalChatContent = originalContent;
+    
+  } catch (error) {
+    alert('Error summarizing: ' + error.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '📝 Summarize';
     }
+  }
+};
+
+window.restoreChatView = function(chatIndex) {
+  if (window._originalChatContent) {
+    const container = elements.chatContainer();
+    container.innerHTML = window._originalChatContent;
+  } else {
+    displayChat(chatIndex);
+  }
+};
+
+window.downloadSingleSummary = function() {
+  if (window._lastSingleSummary) {
+    exportFlexSummary(window._lastSingleSummary, 'single');
+  }
+};
+
+window.copySingleSummary = async function() {
+  if (window._lastSingleSummary) {
+    await copyFlexSummary(window._lastSingleSummary, 'single');
+    alert('Copied to clipboard!');
   }
 };
 
