@@ -865,6 +865,56 @@
       color: var(--link);
     }
 
+    /* AI Features */
+    .ai-btn {
+      background: transparent;
+      color: #10a37f;
+      padding: 0.5rem 1rem;
+      border: 1px solid #10a37f;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+
+    .ai-btn:hover {
+      background-color: rgba(16, 163, 127, 0.1);
+    }
+
+    .ai-section {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .ai-section h3 {
+      margin-top: 0;
+      color: #10a37f;
+    }
+
+    .ai-tag-btn {
+      background: rgba(16, 163, 127, 0.2);
+      color: #10a37f;
+      border: 1px solid #10a37f;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85em;
+      transition: all 0.2s;
+    }
+
+    .ai-tag-btn:hover {
+      background: rgba(16, 163, 127, 0.3);
+    }
+
+    .ai-tag-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .sync-status {
       font-weight: bold;
       padding: 0.25rem 0.75rem;

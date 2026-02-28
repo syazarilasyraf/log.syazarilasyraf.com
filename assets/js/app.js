@@ -31,6 +31,16 @@ import {
   syncFromCloud, 
   getSyncStatus 
 } from './sync.js';
+import {
+  hasApiKey,
+  setApiKey,
+  getApiKey,
+  clearApiKey,
+  validateApiKey,
+  generateTags,
+  generateSummary,
+  estimateTagCost
+} from './ai.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -491,6 +501,7 @@ async function buildMetadataHTML(metadata, chatIndex) {
   const link = `https://chat.openai.com/c/${metadata.id}`;
   const created = new Date(metadata.createdAt).toLocaleString();
   const tags = await getChatTags(chatIndex);
+  const aiEnabled = hasApiKey();
 
   return `
     <details open class="metadata-box">
@@ -499,7 +510,10 @@ async function buildMetadataHTML(metadata, chatIndex) {
     </details>
     <p><em>Chat started ${created}</em> · <a href="${link}" target="_blank" rel="noopener">Continue at ChatGPT</a></p>
     <div class="tag-editor" data-chat-index="${chatIndex}">
-      <span style="color: #888;">Tags:</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="color: #888;">Tags:</span>
+        ${aiEnabled ? `<button id="autoTagBtn" onclick="autoTagChat(${chatIndex})" class="ai-tag-btn" title="AI-powered auto-tagging">🏷️ Auto-Tag</button>` : ''}
+      </div>
       <div class="current-tags">
         ${tags.map(t => `<span class="tag removable" data-tag="${escapeHtml(t)}">${escapeHtml(t)} ×</span>`).join('')}
         <input type="text" class="tag-input" placeholder="+ Add tag" maxlength="20">
@@ -932,6 +946,142 @@ function renderSearchResults(byTitle, byContent, query) {
 }
 
 // ==================== GLOBAL ACTIONS ====================
+window.showAISettings = async function() {
+  const container = elements.chatContainer();
+  if (!container) return;
+  
+  const hasKey = hasApiKey();
+  const apiKey = getApiKey();
+  const maskedKey = apiKey ? `${apiKey.substring(0, 10)}...${apiKey.substring(-4)}` : '';
+  
+  container.innerHTML = `
+    <div style="max-width: 600px; margin: 0 auto;">
+      <h2>🤖 AI Features</h2>
+      
+      <div class="ai-section">
+        <h3>OpenAI API Key</h3>
+        <p style="margin-bottom: 1rem; color: #888;">
+          Bring Your Own Key (BYOK). Your API key is stored locally in your browser only.
+          <br><a href="https://platform.openai.com/api-keys" target="_blank">Get your API key →</a>
+        </p>
+        
+        ${hasKey ? `
+          <div style="background: rgba(76, 175, 80, 0.1); padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+            <p style="color: #4CAF50; margin: 0;">✅ API key configured</p>
+            <p style="color: #888; font-size: 0.9em; margin: 0.5rem 0 0 0;">${maskedKey}</p>
+          </div>
+          <button onclick="removeApiKey()" class="delete-btn">Remove API Key</button>
+        ` : `
+          <input type="password" id="openaiKey" placeholder="sk-..." 
+                 style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+          <p style="color: #888; font-size: 0.85em; margin-bottom: 1rem;">
+            Key format: sk-xxxxxxxxxxxxxxxxxxxxxxxx
+          </p>
+          <button onclick="saveApiKey()" class="upload-btn">Save API Key</button>
+          <div id="aiResult" style="margin-top: 1rem;"></div>
+        `}
+      </div>
+      
+      <div class="ai-section">
+        <h3>Features</h3>
+        <ul style="line-height: 1.8; margin: 0; padding-left: 1.5rem;">
+          <li><strong>Auto-tagging:</strong> AI suggests relevant tags for your chats</li>
+          <li><strong>Summarization:</strong> Generate concise summaries of long conversations</li>
+        </ul>
+        
+        <div style="background: var(--bg); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
+          <p style="margin: 0; color: #888; font-size: 0.9em;">
+            <strong>Cost estimate:</strong> ~$0.001 per chat tagged
+            <br>You'll only be charged by OpenAI for actual usage.
+          </p>
+        </div>
+      </div>
+      
+      <div class="ai-section">
+        <h3>Privacy</h3>
+        <p style="color: #888; font-size: 0.9em; margin: 0;">
+          • Your API key never leaves your browser (stored in localStorage)<br>
+          • Conversation data is sent directly to OpenAI's API<br>
+          • We don't store or log any of your data<br>
+          • You can remove your key at any time
+        </p>
+      </div>
+      
+      <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+    </div>
+  `;
+};
+
+window.saveApiKey = async function() {
+  const keyInput = document.getElementById('openaiKey');
+  const resultDiv = document.getElementById('aiResult');
+  const key = keyInput.value.trim();
+  
+  if (!key || !key.startsWith('sk-')) {
+    resultDiv.innerHTML = '<p style="color: #ff6666;">Please enter a valid OpenAI API key (starts with sk-)</p>';
+    return;
+  }
+  
+  resultDiv.innerHTML = '<p>Validating API key...</p>';
+  
+  try {
+    const validation = await validateApiKey(key);
+    if (validation.valid) {
+      setApiKey(key);
+      resultDiv.innerHTML = '<p style="color: #4CAF50;">✅ API key validated and saved!</p>';
+      setTimeout(() => showAISettings(), 1000);
+    } else {
+      resultDiv.innerHTML = `<p style="color: #ff6666;">❌ ${validation.error}</p>`;
+    }
+  } catch (error) {
+    resultDiv.innerHTML = `<p style="color: #ff6666;">❌ Error: ${error.message}</p>`;
+  }
+};
+
+window.removeApiKey = function() {
+  if (confirm('Remove your OpenAI API key?')) {
+    clearApiKey();
+    showAISettings();
+  }
+};
+
+window.autoTagChat = async function(chatIndex) {
+  const chats = await getStoredChats();
+  const chat = chats[chatIndex];
+  if (!chat) return;
+  
+  const existingTags = await getChatTags(chatIndex);
+  
+  // Show loading state
+  const btn = document.getElementById('autoTagBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generating tags...';
+  }
+  
+  try {
+    const newTags = await generateTags(chat, existingTags);
+    
+    // Add tags one by one
+    for (const tag of newTags) {
+      await addTag(chatIndex, tag);
+    }
+    
+    // Refresh display
+    await displayChat(chatIndex);
+    await renderChatList();
+    
+    alert(`Added ${newTags.length} tags: ${newTags.join(', ')}`);
+  } catch (error) {
+    alert('Error generating tags: ' + error.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🏷️ Auto-Tag';
+    }
+  }
+};
+
 window.showSyncSettings = async function() {
   const container = elements.chatContainer();
   if (!container) return;
