@@ -136,16 +136,29 @@ async function handleFileSelect(e) {
         continue;
       }
 
-      // Check if this looks like a backup file
+      // Check if this looks like a backup file vs extension export
       const parsed = JSON.parse(content);
-      if (parsed.version && parsed.chats) {
+      const isFullBackup = parsed.version && parsed.chats && (parsed.pinnedIndices !== undefined || parsed.tags !== undefined);
+      const isExtensionExport = parsed.source === 'ChatLog Extension';
+      
+      if (isFullBackup) {
+        // Full backup with metadata - restore (replace)
         const count = await importFromBackup(file);
         totalImported += count;
         alert(`Restored ${count} chats from backup.`);
-      } else {
-        // Merge with existing
+        // Update existingChats after restore
+        existingChats = await getStoredChats();
+      } else if (isExtensionExport) {
+        // Extension export - merge with existing
         const merged = mergeChats(existingChats, newChats);
         await saveChatsToDB(merged);
+        existingChats = merged; // Update for next iteration
+        totalImported += newChats.length;
+      } else {
+        // Regular ChatGPT export - merge with existing
+        const merged = mergeChats(existingChats, newChats);
+        await saveChatsToDB(merged);
+        existingChats = merged; // Update for next iteration
         totalImported += newChats.length;
       }
     } catch (err) {
