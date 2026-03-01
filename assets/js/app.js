@@ -81,6 +81,11 @@ import {
   getTagColor
 } from './cards.js';
 import {
+  isMobile,
+  initMobileNav,
+  switchMobileTab
+} from './mobile-nav.js';
+import {
   getUserMode,
   setUserMode,
   toggleUserMode,
@@ -136,6 +141,11 @@ async function init() {
   // Initial render
   await renderChatList();
   updateModeUI();
+  
+  // Initialize mobile navigation if on mobile
+  if (isMobile()) {
+    initMobileNav();
+  }
   
   console.log('ChatLog ready.');
 }

@@ -12,7 +12,7 @@
   </div>
   
   <button id="toggleBulk" class="toggle-bulk pencil-button">✏️</button>
-  <button id="burgerButton" class="burger-button">💬</button>
+  <button id="burgerButton" class="burger-button mobile-only">💬</button>
   
   <aside id="sidebar" class="sidebar">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -153,9 +153,9 @@
       </label>
       <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
       <button onclick="exportAllData()" class="export-btn" title="Backup all data">💾 Backup</button>
-      <button onclick="showStats()" class="stats-btn" title="View statistics">📊 Stats</button>
-      <button onclick="showAISettings()" class="ai-btn" title="AI features">🤖 AI</button>
-      <button onclick="showSyncSettings()" class="sync-btn" title="Cloud sync settings">☁️ Sync</button>
+      <button onclick="showStats()" class="stats-btn desktop-only" title="View statistics">📊 Stats</button>
+      <button onclick="showAISettings()" class="ai-btn desktop-only" title="AI features">🤖 AI</button>
+      <button onclick="showSyncSettings()" class="sync-btn desktop-only" title="Cloud sync settings">☁️ Sync</button>
       
       <div id="bulkControls" style="display: none;" class="bulk-controls ">
         <button class="bulk-delete delete-btn">🗑️ Delete Selected</button>
