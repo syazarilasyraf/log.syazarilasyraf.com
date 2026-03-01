@@ -98,7 +98,9 @@ After a few days, you'll be prompted to try Advanced mode with analytics, custom
 ### Tech Stack
 | Layer | Technology |
 |-------|------------|
-| Frontend | Vanilla ES6+ (zero framework dependencies) |
+| Frontend | Vanilla ES6+ with modular architecture |
+| Design | Custom CSS design system with CSS variables |
+| Animations | Custom animation library with GPU acceleration |
 | Storage | IndexedDB with custom storage layer |
 | Search | Fuse.js (fuzzy) + Custom filter engine |
 | AI | OpenAI API (user-provided keys) |
@@ -132,6 +134,12 @@ ChatLog is designed for mobile as much as desktop:
 - **Touch-optimized** — Cards are 80px minimum for easy tapping
 - **Native feel** — Action sheets, full-screen search, smooth animations
 - **Responsive** — Sidebar becomes slide-over, filters adapt to screen
+
+### Delightful Interactions
+- **Smooth animations** — Cards fade in, buttons ripple, transitions feel natural
+- **Loading states** — Skeleton screens while content loads
+- **Visual feedback** — Hover effects, active states, micro-interactions
+- **Polished UI** — Carefully crafted spacing, shadows, and colors
 
 ### Smart Organization
 - **Time-based grouping** — Today, Yesterday, Last 7/30 Days, Months, Years
@@ -194,6 +202,10 @@ Understand your AI usage:
 
 ### Current
 - [x] **Simple/Advanced modes** — Accessible to everyone, powerful for pros
+- [x] **Beautiful card-based layout** — Visual, modern conversation browsing
+- [x] **Mobile-first responsive design** — Native app feel on all devices
+- [x] **Smooth animations** — Delightful micro-interactions throughout
+- [x] **Design system** — Polished, consistent visual language
 - [x] Local-first storage — Your data stays private
 - [x] Smart search with filters
 - [x] AI-powered tagging and summaries
