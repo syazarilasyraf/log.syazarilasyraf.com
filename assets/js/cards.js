@@ -241,7 +241,78 @@ export function createEmptyStateCard(type = 'default') {
     ${state.action ? `<button class="empty-state-action">${state.action}</button>` : ''}
   `;
   
+  // Add click handler for action button
+  const actionBtn = card.querySelector('.empty-state-action');
+  if (actionBtn) {
+    actionBtn.addEventListener('click', () => {
+      if (type === 'default') {
+        showGettingStartedModal();
+      } else if (type === 'filter') {
+        // Clear filters
+        if (window.clearAllFilters) window.clearAllFilters();
+      }
+    });
+  }
+  
   return card;
+}
+
+// Show getting started modal
+function showGettingStartedModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+  `;
+  
+  modal.innerHTML = `
+    <div style="background: var(--bg-light); border-radius: 16px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 2rem;">
+      <h2 style="margin: 0 0 1rem 0;">Getting Started</h2>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="color: var(--link); margin-bottom: 0.5rem;">1. Export from ChatGPT</h3>
+        <p style="color: #888; margin: 0;">
+          Go to ChatGPT → Settings → Data controls → Export data<br>
+          Wait for the email → Download the ZIP file
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="color: var(--link); margin-bottom: 0.5rem;">2. Upload to ChatLog</h3>
+        <p style="color: #888; margin: 0;">
+          Extract the ZIP file → Click "Choose Files" above<br>
+          Select <code>conversations.json</code>
+        </p>
+      </div>
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="color: var(--link); margin-bottom: 0.5rem;">3. Auto-Save (Optional)</h3>
+        <p style="color: #888; margin: 0;">
+          Install the browser extension to save conversations automatically as you chat.
+        </p>
+      </div>
+      
+      <button onclick="this.closest('.modal').remove()" style="width: 100%; padding: 0.75rem; background: var(--accent); border: none; border-radius: 8px; color: var(--fg); font-weight: 600; cursor: pointer;">
+        Got it!
+      </button>
+    </div>
+  `;
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  
+  document.body.appendChild(modal);
 }
 
 // Create section header (Today, Yesterday, etc.)
