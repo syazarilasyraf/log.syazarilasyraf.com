@@ -846,6 +846,34 @@
       color: #000;
     }
 
+    /* Toast Notifications */
+    @keyframes slideUp {
+      from { transform: translate(-50%, 100%); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    @keyframes slideDown {
+      from { transform: translate(-50%, 0); opacity: 1; }
+      to { transform: translate(-50%, 100%); opacity: 0; }
+    }
+
+    /* Mode indicator */
+    .mode-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .mode-badge.simple {
+      background: var(--accent);
+      color: var(--fg);
+    }
+    .mode-badge.advanced {
+      background: #2D5A4A;
+      color: white;
+    }
+
     /* Cloud Sync */
     .sync-btn {
       background: transparent;

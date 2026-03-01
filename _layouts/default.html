@@ -15,9 +15,19 @@
   <button id="burgerButton" class="burger-button">💬</button>
   
   <aside id="sidebar" class="sidebar">
-    <h2>logs - ChatGPT</h2>
-    <button class="toggle-bulk bulk-btn">✏️ Select Chats</button>
-    <button id="toggleFolderView" title="Toggle Folder View" style="background: none; border: none; padding: 0; margin-left: 0.5em; font-size: 1.2em; cursor: pointer; vertical-align: middle;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">ChatLog</h2>
+      <button id="modeToggle" onclick="toggleMode()" style="background: var(--accent); border: none; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; cursor: pointer; color: var(--fg);">
+        Simple
+      </button>
+    </div>
+    
+    <p id="storageInfo" style="font-size: 0.8em; color: #888; margin-bottom: 1rem;">
+      🔒 Stored securely on your device
+    </p>
+    
+    <button class="toggle-bulk bulk-btn" style="display: none;">✏️ Select</button>
+    <button id="toggleFolderView" title="Toggle Folder View" style="background: none; border: none; padding: 0; margin-left: 0.5em; font-size: 1.2em; cursor: pointer; vertical-align: middle; display: none;">
       <span aria-label="Toggle Folder View" style="display: inline-block; line-height: 1;">📁</span>
     </button> 
     <div id="searchContainer">
@@ -125,10 +135,15 @@
     <h1>logs - ChatGPT</h1>
 
     <div class="intro-box">
-      <p>Upload your exported <code>conversations.json</code> file from ChatGPT.</p>
-      <p>Everything is stored locally in your browser (via IndexedDB).</p>
-      <p><small>Storage upgraded: Now supports 50MB+ files.</small></p>
-      <p>Source: <a href="https://github.com/syazarilasyraf/log.syazarilasyraf.com" target="_blank" rel="noopener noreferrer">Github</a></p>
+      <p style="font-size: 1.1em; margin-bottom: 0.5rem;"><strong>Your AI conversations, organized.</strong></p>
+      <p style="color: #888; margin-bottom: 1rem;">
+        🔒 <strong>Private:</strong> Everything stays on your device<br>
+        🔍 <strong>Searchable:</strong> Find any conversation instantly<br>
+        🏷️ <strong>Organized:</strong> Tag and categorize your chats
+      </p>
+      <p style="font-size: 0.9em; color: #888;">
+        Upload your ChatGPT export or use our browser extension to auto-save.
+      </p>
     </div>
 
     <div class="upload-controls">

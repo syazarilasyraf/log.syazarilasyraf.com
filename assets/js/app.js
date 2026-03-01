@@ -65,6 +65,26 @@ import {
   getFilterDescription,
   DEFAULT_FILTERS
 } from './search-filters.js';
+import {
+  getUserMode,
+  setUserMode,
+  toggleUserMode,
+  initializeUserMode,
+  shouldPromptAdvanced,
+  markAdvancedPromptSeen,
+  MODES
+} from './user-mode.js';
+import {
+  getUserMode,
+  setUserMode,
+  toggleUserMode,
+  isFeatureVisible,
+  getFeatureDescription,
+  initializeUserMode,
+  shouldPromptAdvanced,
+  markAdvancedPromptSeen,
+  MODES
+} from './user-mode.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -89,19 +109,86 @@ const elements = {
 async function init() {
   console.log('Initializing ChatLog...');
   
+  // Initialize user mode (Simple by default)
+  const userMode = initializeUserMode();
+  console.log(`User mode: ${userMode}`);
+  
   // Run migration from localStorage if needed
   const migrated = await migrateFromLocalStorage();
   if (migrated) {
-    console.log('Migration complete. Your data is now in IndexedDB.');
+    console.log('Your conversations have been moved to secure local storage.');
   }
   
   // Setup event listeners
   setupEventListeners();
   
+  // Check if we should prompt about Advanced mode
+  if (shouldPromptAdvanced()) {
+    showAdvancedModePrompt();
+  }
+  
   // Initial render
   await renderChatList();
+  updateModeUI();
   
   console.log('ChatLog ready.');
+}
+
+function updateModeUI() {
+  const mode = getUserMode();
+  
+  // Update mode toggle button
+  const btn = document.getElementById('modeToggle');
+  if (btn) {
+    btn.textContent = mode === MODES.SIMPLE ? 'Simple' : 'Advanced';
+    btn.style.background = mode === MODES.SIMPLE ? 'var(--accent)' : '#2D5A4A';
+  }
+  
+  // Update storage info
+  const storageInfo = document.getElementById('storageInfo');
+  if (storageInfo) {
+    storageInfo.textContent = mode === MODES.SIMPLE 
+      ? '🔒 Stored securely on your device'
+      : '🔒 Local IndexedDB storage';
+  }
+  
+  // Show/hide advanced elements
+  document.querySelectorAll('.advanced-only').forEach(el => {
+    el.style.display = mode === MODES.ADVANCED ? 'block' : 'none';
+  });
+  
+  // Show/hide simple elements
+  document.querySelectorAll('.simple-only').forEach(el => {
+    el.style.display = mode === MODES.SIMPLE ? 'block' : 'none';
+  });
+}
+
+window.toggleMode = function() {
+  toggleUserMode();
+  location.reload();
+};
+
+function showAdvancedModePrompt() {
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 style="margin-bottom: 1rem;">🎉 You've been using ChatLog for a while!</h3>
+      <p style="color: #888; margin-bottom: 1.5rem;">
+        Want to unlock more powerful features? Try Advanced mode for analytics, custom filters, and more.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <button onclick="this.closest('.modal').remove(); markAdvancedPromptSeen();" class="delete-btn" style="padding: 0.5rem 1rem;">
+          Keep it simple
+        </button>
+        <button onclick="this.closest('.modal').remove(); setUserMode('advanced'); location.reload();" class="upload-btn" style="padding: 0.5rem 1rem;">
+          Try Advanced
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 }
 
 function setupEventListeners() {
@@ -1663,11 +1750,22 @@ window.autoTagChat = async function(chatIndex) {
   
   const existingTags = await getChatTags(chatIndex);
   
+  // Show cost confirmation in simple mode
+  const mode = getUserMode();
+  if (mode === MODES.SIMPLE) {
+    const confirmed = confirm(
+      `🏷️ Auto-tag this conversation?\n\n` +
+      `Estimated cost: ~$0.001\n` +
+      `Charged to your OpenAI account`
+    );
+    if (!confirmed) return;
+  }
+  
   // Show loading state
   const btn = document.getElementById('autoTagBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Generating tags...';
+    btn.textContent = mode === MODES.SIMPLE ? 'Tagging...' : 'Generating tags...';
   }
   
   try {
@@ -1682,7 +1780,12 @@ window.autoTagChat = async function(chatIndex) {
     await displayChat(chatIndex);
     await renderChatList();
     
-    alert(`Added ${newTags.length} tags: ${newTags.join(', ')}`);
+    // Success message based on mode
+    if (mode === MODES.SIMPLE) {
+      showToast(`✅ Added ${newTags.length} tags`);
+    } else {
+      alert(`Added ${newTags.length} tags: ${newTags.join(', ')}`);
+    }
   } catch (error) {
     alert('Error generating tags: ' + error.message);
   } finally {
@@ -1692,6 +1795,31 @@ window.autoTagChat = async function(chatIndex) {
     }
   }
 };
+
+// Toast notification for simple mode
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2D5A4A;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 10000;
+    animation: slideUp 0.3s ease;
+  `;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideDown 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 window.showSyncSettings = async function() {
   const container = elements.chatContainer();
@@ -1873,6 +2001,42 @@ window.clearAllChats = async function(btn) {
 };
 
 window.exportAllData = exportAllData;
+
+// Mode toggle
+window.toggleMode = function() {
+  const newMode = toggleUserMode();
+  location.reload();
+};
+
+// Update mode toggle button
+function updateModeIndicator() {
+  const mode = getUserMode();
+  const btn = document.getElementById('modeToggle');
+  if (btn) {
+    btn.textContent = mode === MODES.SIMPLE ? 'Simple' : 'Advanced';
+    btn.style.background = mode === MODES.SIMPLE ? 'var(--accent)' : '#10a37f';
+  }
+  
+  // Update storage info text
+  const storageInfo = document.getElementById('storageInfo');
+  if (storageInfo) {
+    storageInfo.innerHTML = mode === MODES.SIMPLE 
+      ? '🔒 Stored securely on your device'
+      : '🔒 IndexedDB local storage';
+  }
+  
+  // Show/hide advanced features
+  const advancedElements = document.querySelectorAll('.advanced-only');
+  advancedElements.forEach(el => {
+    el.style.display = mode === MODES.ADVANCED ? 'block' : 'none';
+  });
+  
+  // Show/hide simple mode elements
+  const simpleElements = document.querySelectorAll('.simple-only');
+  simpleElements.forEach(el => {
+    el.style.display = mode === MODES.SIMPLE ? 'block' : 'none';
+  });
+}
 
 // ==================== UTILITIES ====================
 function escapeHtml(text) {
