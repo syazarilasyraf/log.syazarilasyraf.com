@@ -23,6 +23,7 @@ ChatLog fills this gap with a zero-compromise approach to privacy and user contr
 ### Core
 - 📁 **Universal Import** — Supports ChatGPT exports, browser extension saves, and backup files
 - 🔍 **Fuzzy Search** — Typo-tolerant full-text search with highlighted matches
+- 🔎 **Advanced Filters** — Filter by date range, message count, tags, content type (code, links, images)
 - 🏷️ **Tagging System** — Organize conversations with custom tags
 - 📊 **Analytics Dashboard** — Insights on usage patterns, peak activity, top topics
 - 💾 **Local-First Storage** — 50MB+ IndexedDB storage (no 5MB limit)
@@ -87,9 +88,9 @@ All AI features use **Bring Your Own Key** — your OpenAI API key stays in your
 ### Tech Stack
 | Layer | Technology |
 |-------|------------|
-| Frontend | Vanilla ES6+ (zero dependencies except marked.js) |
+| Frontend | Vanilla ES6+ (zero framework dependencies) |
 | Storage | IndexedDB with custom storage layer |
-| Search | Fuse.js (fuzzy matching) |
+| Search | Fuse.js (fuzzy) + Custom filter engine |
 | AI | OpenAI API (user-provided keys) |
 | Extension | Chrome Manifest V3 |
 | PWA | Service Worker, offline-capable |
@@ -121,6 +122,35 @@ All with customizable prompts and cost estimates before generating.
 - **Bulk operations** — Select, delete, export multiple chats
 - **Virtual scrolling** — Smooth performance with 1000+ message chats
 
+### Advanced Search Filters
+Find exactly what you need with powerful filtering:
+
+**Date Ranges**
+- Today, Yesterday, Last 7/30 Days
+- This Month, Last Month
+- Custom date ranges
+
+**Message Count**
+- Short (1-10 messages)
+- Medium (11-50 messages)
+- Long (51+ messages)
+
+**Content Type**
+- Has code blocks
+- Has links
+- Has images
+
+**Tag Filtering**
+- Multi-select tags
+- Match ANY or ALL selected tags
+
+**Search Scope**
+- Search in titles only
+- Search in content only
+- Search both
+
+Combine filters with fuzzy text search for precise results.
+
 ### Analytics
 Understand your AI usage:
 - Message distribution (You vs AI)
@@ -147,6 +177,7 @@ Understand your AI usage:
 ### Current
 - [x] IndexedDB storage with 50MB+ capacity
 - [x] Fuzzy search with Fuse.js
+- [x] Advanced search filters
 - [x] Virtual scrolling for large conversations
 - [x] PWA with offline support
 - [x] Tagging system
