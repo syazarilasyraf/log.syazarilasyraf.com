@@ -84,7 +84,7 @@ export async function createConversationCard(chat, index, options = {}) {
           ${isPinned ? '📌' : '📍'}
         </button>
         <button class="card-btn export-btn" title="Export as Markdown">
-          💾
+          📝
         </button>
         <span class="card-time">${timeAgo}</span>
       </div>
@@ -180,6 +180,14 @@ function exportChatAsMarkdown(chat, index) {
   }
   md += `---\n\n`;
   md += `*Chat started ${new Date(metadata.chatGPT_create_time).toLocaleString()}*\n\n`;
+  
+  // Add Continue at ChatGPT link
+  const chatId = chat.id;
+  if (chatId) {
+    md += `[Continue this conversation at ChatGPT](https://chat.openai.com/c/${chatId})\n\n`;
+  }
+  
+  md += `---\n\n`;
 
   chat.messages?.forEach((msg, j) => {
     const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
@@ -249,6 +257,7 @@ export function createSectionHeader(title, count) {
 
 // Render conversations as cards
 export async function renderConversationCards(container, chats, options = {}) {
+  const { folderView = false } = options;
   container.innerHTML = '';
   
   if (chats.length === 0) {
@@ -256,30 +265,57 @@ export async function renderConversationCards(container, chats, options = {}) {
     return;
   }
   
-  // Group by date sections
-  const sections = groupChatsBySection(chats);
+  // Group by date sections (with pinned first)
+  const sections = await groupChatsBySection(chats);
   
   for (const [sectionTitle, sectionChats] of sections) {
-    // Add section header
-    container.appendChild(createSectionHeader(sectionTitle, sectionChats.length));
-    
-    // Add cards
-    const cardsContainer = document.createElement('div');
-    cardsContainer.className = 'cards-container';
-    
-    for (const { chat, originalIndex } of sectionChats) {
-      const card = await createConversationCard(chat, originalIndex, options);
-      cardsContainer.appendChild(card);
+    if (folderView) {
+      // Folder view: collapsible sections
+      const folder = document.createElement('details');
+      folder.className = 'chat-folder';
+      folder.open = sectionTitle === 'Pinned'; // Keep pinned open by default
+      
+      const summary = document.createElement('summary');
+      summary.className = 'folder-header';
+      summary.innerHTML = `
+        <span class="folder-title">${sectionTitle}</span>
+        <span class="folder-count">${sectionChats.length}</span>
+      `;
+      folder.appendChild(summary);
+      
+      // Add cards inside folder
+      const cardsContainer = document.createElement('div');
+      cardsContainer.className = 'cards-container folder-content';
+      
+      for (const { chat, originalIndex } of sectionChats) {
+        const card = await createConversationCard(chat, originalIndex, options);
+        cardsContainer.appendChild(card);
+      }
+      
+      folder.appendChild(cardsContainer);
+      container.appendChild(folder);
+    } else {
+      // Flat view: regular sections
+      container.appendChild(createSectionHeader(sectionTitle, sectionChats.length));
+      
+      const cardsContainer = document.createElement('div');
+      cardsContainer.className = 'cards-container';
+      
+      for (const { chat, originalIndex } of sectionChats) {
+        const card = await createConversationCard(chat, originalIndex, options);
+        cardsContainer.appendChild(card);
+      }
+      
+      container.appendChild(cardsContainer);
     }
-    
-    container.appendChild(cardsContainer);
   }
 }
 
-// Group chats by time sections
-function groupChatsBySection(chats) {
+// Group chats by time sections, with pinned chats first
+async function groupChatsBySection(chats) {
   const now = new Date();
   const sections = {
+    'Pinned': [],
     'Today': [],
     'Yesterday': [],
     'This Week': [],
@@ -287,11 +323,22 @@ function groupChatsBySection(chats) {
     'Earlier': []
   };
   
+  // Get pinned chat indices
+  const pinnedChats = await getPinnedChats();
+  const pinnedSet = new Set(pinnedChats);
+  
   chats.forEach((chat, index) => {
+    const item = { chat, originalIndex: index };
+    
+    // Check if pinned first
+    if (pinnedSet.has(index)) {
+      sections['Pinned'].push(item);
+      return;
+    }
+    
+    // Otherwise group by date
     const date = new Date(chat.createdAt);
     const diffDays = Math.floor((now - date) / 86400000);
-    
-    const item = { chat, originalIndex: index };
     
     if (diffDays === 0) sections['Today'].push(item);
     else if (diffDays === 1) sections['Yesterday'].push(item);

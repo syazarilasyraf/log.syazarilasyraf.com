@@ -227,9 +227,30 @@ function setupEventListeners() {
   
   // Note: Bulk edit UI removed in redesign - functionality available in Actions menu
   
-  // Folder view toggle
-  document.getElementById('toggleFolderView')?.addEventListener('click', () => {
+  // Folder view toggle - load saved preference
+  const savedFolderView = localStorage.getItem('chatlog_folder_view');
+  if (savedFolderView !== null) {
+    folderViewEnabled = savedFolderView === 'true';
+  }
+  
+  // Update button state
+  const folderBtn = document.getElementById('folderViewToggle');
+  if (folderBtn) {
+    folderBtn.classList.toggle('active', folderViewEnabled);
+    folderBtn.style.background = folderViewEnabled ? 'var(--accent)' : 'var(--bg)';
+  }
+  
+  document.getElementById('folderViewToggle')?.addEventListener('click', () => {
     folderViewEnabled = !folderViewEnabled;
+    localStorage.setItem('chatlog_folder_view', folderViewEnabled);
+    
+    // Update button visual state
+    const btn = document.getElementById('folderViewToggle');
+    if (btn) {
+      btn.classList.toggle('active', folderViewEnabled);
+      btn.style.background = folderViewEnabled ? 'var(--accent)' : 'var(--bg)';
+    }
+    
     renderChatList();
   });
   
@@ -403,7 +424,8 @@ async function renderChatList(filterTag = null) {
   // Use card-based layout for better UX
   await renderConversationCards(chatListEl, displayChats, {
     showTags: true,
-    compact: mode === MODES.SIMPLE
+    compact: mode === MODES.SIMPLE,
+    folderView: folderViewEnabled
   });
   
   // Add click handlers to cards
@@ -495,8 +517,52 @@ function selectChat(index) {
   
   const container = elements.chatContainer();
   if (container) container.innerHTML = '';
+  
+  // Save current view state for back button
+  saveViewState();
+  
   displayChat(index);
 }
+
+// Save current view state (filters, etc.) for restoration
+function saveViewState() {
+  const state = {
+    filters: currentFilters,
+    hasActiveFilters: currentFilters && (
+      currentFilters.datePreset !== 'all' ||
+      currentFilters.messageRange !== 'any' ||
+      currentFilters.tags.length > 0 ||
+      currentFilters.hasCode ||
+      currentFilters.hasLinks ||
+      currentFilters.hasImages
+    ),
+    timestamp: Date.now()
+  };
+  sessionStorage.setItem('chatlog_view_state', JSON.stringify(state));
+}
+
+// Restore view state when going back to chat list
+window.restoreViewState = async function() {
+  const saved = sessionStorage.getItem('chatlog_view_state');
+  if (saved) {
+    const state = JSON.parse(saved);
+    // Restore filters
+    if (state.filters) {
+      currentFilters = state.filters;
+      // Update filter UI
+      await populateFilterTags();
+      loadFilterValues();
+      updateActiveFiltersDisplay();
+      // Re-render with filters
+      await renderChatList();
+      // Clear the saved state so we don't restore again accidentally
+      sessionStorage.removeItem('chatlog_view_state');
+      return;
+    }
+  }
+  // Default: just render normal list
+  await renderChatList();
+};
 
 function renderFlatView(container, sections) {
   const renderSection = (title, entries) => {
@@ -1258,7 +1324,7 @@ window.showAISettings = async function() {
         </div>
       </div>
       
-      <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+      <button onclick="restoreViewState()" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
     </div>
   `;
   
@@ -1801,7 +1867,7 @@ window.showSyncSettings = async function() {
         </div>
       `}
       
-      <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+      <button onclick="restoreViewState()" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
     </div>
   `;
 };
@@ -1889,7 +1955,7 @@ window.showStats = async function() {
       <div style="max-width: 800px; margin: 0 auto;">
         <h2 style="display: flex; align-items: center; gap: 0.5rem;">📊 Chat Statistics</h2>
         ${formatStatsHTML(stats)}
-        <button onclick="displayChat(0)" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
+        <button onclick="restoreViewState()" class="export-btn" style="margin-top: 2rem;">← Back to Chats</button>
       </div>
     `;
   }, 100);

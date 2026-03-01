@@ -23,6 +23,9 @@
       <div id="searchContainer" style="margin-bottom: 1rem;">
         <div style="display: flex; gap: 0.5rem;">
           <input type="text" id="chatSearch" placeholder="🔍 Search chats..." style="flex: 1;" />
+          <button id="folderViewToggle" onclick="toggleFolderView()" title="Toggle Folder View" style="background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 0.5rem; border-radius: 4px; cursor: pointer;">
+            📁
+          </button>
           <button id="filterToggle" onclick="toggleFilterPanel()" title="Filters" class="advanced-only" style="background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 0.5rem; border-radius: 4px; cursor: pointer; display: none;">
             ⚙️
           </button>
@@ -127,10 +130,7 @@
     
     <!-- Sidebar Footer -->
     <div class="sidebar-footer">
-      
-      <button id="toggleFolderView" title="Toggle Folder View" class="advanced-only" style="display: none; background: none; border: none; color: #888; font-size: 0.85em; cursor: pointer; width: 100%; text-align: left;">
-        📁 Toggle Folder View
-      </button>
+      <!-- Footer content if needed -->
     </div>
   </aside>
 
@@ -171,7 +171,7 @@
         <input type="file" id="fileInput" accept=".json" multiple hidden>
       </label>
       <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
-      <button onclick="exportAllData()" class="export-btn" title="Backup all data">💾 Backup</button>
+      <button onclick="exportAllData()" class="export-btn" title="Backup all data">📦 Backup JSON</button>
     </div>
 
     <section id="chatContainer" class="chat-container"></section>
