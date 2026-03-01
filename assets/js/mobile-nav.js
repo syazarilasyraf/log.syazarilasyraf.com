@@ -277,4 +277,4 @@ window.addEventListener('resize', () => {
 });
 
 // Export for use
-export { currentMobileTab, switchMobileTab };
+export { currentMobileTab };
