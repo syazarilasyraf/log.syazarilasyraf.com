@@ -1901,6 +1901,7 @@ window.clearAllChats = async function(btn) {
 };
 
 window.exportAllData = exportAllData;
+window.displayChat = displayChat;
 
 // Update mode toggle button
 function updateModeIndicator() {
