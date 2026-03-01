@@ -1263,17 +1263,13 @@
         justify-content: center;
       }
 
-      /* Simpler filters on mobile - fullscreen overlay */
+      /* Simpler filters on mobile - contained within sidebar */
       #filterPanel {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 80px; /* Leave space for bottom nav */
-        z-index: 9000; /* Below mobile nav (9999) but above sidebar */
-        max-height: calc(100vh - 80px);
-        border-radius: 0;
+        position: relative;
+        max-height: 60vh;
         overflow-y: auto;
+        border-radius: 8px;
+        z-index: auto;
         display: none; /* Controlled by JS */
       }
 

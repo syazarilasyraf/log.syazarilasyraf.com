@@ -79,6 +79,22 @@ export function switchMobileTab(tab) {
     return;
   }
   
+  // Toggle search off if clicking search again
+  if (tab === 'search' && currentMobileTab === 'search') {
+    hideSearchOverlay();
+    currentMobileTab = 'chat';
+    updateTabUI();
+    return;
+  }
+  
+  // Toggle actions off if clicking actions again
+  if (tab === 'actions' && currentMobileTab === 'actions') {
+    hideActionsOverlay();
+    currentMobileTab = 'chat';
+    updateTabUI();
+    return;
+  }
+  
   currentMobileTab = tab;
   updateTabUI();
   
@@ -178,7 +194,11 @@ function showSearchView() {
   }
   
   overlay.style.display = 'block';
-  overlay.querySelector('#mobile-search-input').focus();
+  // Delay focus to prevent mobile keyboard glitch
+  setTimeout(() => {
+    const input = overlay.querySelector('#mobile-search-input');
+    if (input) input.focus();
+  }, 100);
 }
 
 function showActionsView() {
