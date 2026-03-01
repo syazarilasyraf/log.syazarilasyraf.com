@@ -55,3 +55,22 @@ export function isFeatureVisible(feature) {
   const simpleFeatures = ['search', 'time_filter', 'tags', 'auto_tag', 'summarize', 'export'];
   return mode === MODES.SIMPLE ? simpleFeatures.includes(feature) : true;
 }
+
+export function getFeatureDescription(feature) {
+  const mode = getUserMode();
+  const descriptions = {
+    storage: {
+      simple: 'Stored securely on your device',
+      advanced: 'IndexedDB local storage'
+    },
+    search: {
+      simple: 'Find anything instantly',
+      advanced: 'Fuzzy search with Fuse.js'
+    },
+    ai: {
+      simple: 'AI helps organize your chats',
+      advanced: 'BYOK OpenAI integration'
+    }
+  };
+  return descriptions[feature]?.[mode] || descriptions[feature]?.simple;
+}
