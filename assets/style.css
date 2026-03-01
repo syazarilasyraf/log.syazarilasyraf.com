@@ -1,19 +1,77 @@
+/* ChatLog Design System */
+
 :root {
-      --bg: #121212;
-      --bg-light: #1e1e1e;
-      --fg: #e0e0e0;
-      --border: #333;
-      --highlight: #1a1a1a;
-      --link: #8ab4f8;
-      --accent: #252525;
-    }
+  /* Primary Colors - Calm Teal */
+  --color-primary-50: #f0f9f6;
+  --color-primary-100: #d9f0e8;
+  --color-primary-200: #b3e1d1;
+  --color-primary-300: #80cbb3;
+  --color-primary-400: #4db095;
+  --color-primary-500: #2D5A4A;
+  --color-primary-600: #234a3d;
+  --color-primary-700: #1a3830;
+  
+  /* Accent Colors */
+  --color-coral: #FF6B6B;
+  --color-gold: #FFD93D;
+  --color-sky: #8ab4f8;
+  
+  /* Dark Theme (Default) */
+  --bg: #0F172A;
+  --bg-light: #1E293B;
+  --bg-elevated: #2d3a4f;
+  --fg: #F1F5F9;
+  --fg-muted: #94A3B8;
+  --border: #334155;
+  --border-subtle: #1e293b;
+  --link: #80CBB3;
+  --accent: #2D5A4A;
+  
+  /* Legacy compatibility */
+  --highlight: var(--bg-light);
+  
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 350ms ease;
+}
 
     body {
       display: flex;
-      font-family: sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       margin: 0;
       background-color: var(--bg);
       color: var(--fg);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    /* Smooth scrolling */
+    html {
+      scroll-behavior: smooth;
     }
 
     aside {
@@ -152,31 +210,46 @@
     }
 
     .upload-btn {
-    background-color: var(--link);
-    color: black;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: bold;
-    display: inline-block;
-    transition: background-color 0.2s;
+      background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+      color: white;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all var(--transition-base);
+      border: none;
+      box-shadow: var(--shadow-sm);
     }
 
     .upload-btn:hover {
-    background-color: #5a9cf0;
+      background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-500));
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .upload-btn:active {
+      transform: translateY(0);
     }
 
     .delete-btn {
-    background: transparent;
-    color: #ff6666;
-    border: 1px solid #ff6666;
-    border-radius: 6px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: bold;
-    transition: background-color 0.2s;
+      background: transparent;
+      color: var(--color-coral);
+      border: 1px solid var(--color-coral);
+      border-radius: var(--radius-md);
+      padding: 0.625rem 1.25rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all var(--transition-base);
+    }
+    
+    .delete-btn:hover {
+      background: rgba(255, 107, 107, 0.1);
+      transform: translateY(-1px);
     }
 
     .delete-btn:hover {
@@ -849,24 +922,31 @@
     /* Card-based Layout */
     .conversation-card {
       background: var(--bg-light);
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 0.75rem;
+      border-radius: var(--radius-lg);
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-fast);
       border: 2px solid transparent;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: var(--shadow-sm);
     }
 
     .conversation-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border-color: var(--link);
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-primary-400);
+      background: var(--bg-elevated);
     }
 
     .conversation-card.selected {
       border-color: var(--link);
-      background: rgba(138, 180, 248, 0.1);
+      background: rgba(128, 203, 179, 0.1);
+      box-shadow: 0 0 0 3px rgba(128, 203, 179, 0.2);
+    }
+    
+    .conversation-card:active {
+      transform: translateY(0);
+      transition: transform var(--transition-fast);
     }
 
     .card-header {

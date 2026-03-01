@@ -86,6 +86,15 @@ import {
   switchMobileTab
 } from './mobile-nav.js';
 import {
+  fadeIn,
+  slideInUp,
+  createSpinner,
+  createSkeleton,
+  staggerAnimation,
+  addRipple,
+  initAnimations
+} from './animations.js';
+import {
   getUserMode,
   setUserMode,
   toggleUserMode,
@@ -146,6 +155,9 @@ async function init() {
   if (isMobile()) {
     initMobileNav();
   }
+  
+  // Initialize animations
+  initAnimations();
   
   console.log('ChatLog ready.');
 }
@@ -330,11 +342,25 @@ async function renderChatList(filterTag = null) {
   const chatListEl = elements.chatList();
   
   if (!chatListEl) return;
+  
+  // Show loading skeleton if empty
+  if (chatListEl.children.length === 0) {
+    chatListEl.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      chatListEl.appendChild(createSkeleton('card'));
+    }
+  }
+  
+  // Small delay for smooth transition
+  await new Promise(r => setTimeout(r, 100));
+  
   chatListEl.innerHTML = '';
 
   if (chats.length === 0) {
-    // Use nice empty state card
-    chatListEl.appendChild(createEmptyStateCard('default'));
+    // Use nice empty state card with animation
+    const emptyCard = createEmptyStateCard('default');
+    fadeIn(emptyCard);
+    chatListEl.appendChild(emptyCard);
     return;
   }
   
