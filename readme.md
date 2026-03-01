@@ -23,6 +23,7 @@ ChatLog fills this gap with a zero-compromise approach to privacy and user contr
 ### Designed for Everyone
 - 🎯 **Two Modes**: Simple (default) for everyday users, Advanced for power users
 - 🔒 **Privacy First**: Everything stays on your device by default
+- 🎨 **Beautiful Cards**: Browse conversations in a modern, visual layout
 - 🔍 **Smart Search**: Find any conversation instantly, even with typos
 - 🏷️ **Auto-Organization**: AI suggests tags, or organize manually
 - 📱 **Works Everywhere**: Web app + browser extension, works offline
