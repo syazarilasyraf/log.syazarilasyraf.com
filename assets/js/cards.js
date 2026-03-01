@@ -2,6 +2,7 @@
 
 import { getChatTags } from './tags.js';
 import { getUserMode, MODES } from './user-mode.js';
+import { getPinnedChats, savePinnedChats } from './storage.js';
 
 // Format relative time for cards
 export function formatRelativeTime(dateString) {
@@ -70,11 +71,23 @@ export async function createConversationCard(chat, index, options = {}) {
   const hasCode = chat.messages?.some(m => m.content?.includes('```'));
   const hasLinks = chat.messages?.some(m => /https?:\/\/[^\s]+/.test(m.content));
   
+  // Check if pinned
+  const pinnedChats = await getPinnedChats();
+  const isPinned = pinnedChats.includes(index);
+  
   // Build card HTML
   card.innerHTML = `
     <div class="card-header">
       <h3 class="card-title">${escapeHtml(chat.title || 'Untitled Chat')}</h3>
-      <span class="card-time">${timeAgo}</span>
+      <div class="card-actions">
+        <button class="card-btn pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
+          ${isPinned ? '📌' : '📍'}
+        </button>
+        <button class="card-btn export-btn" title="Export as Markdown">
+          💾
+        </button>
+        <span class="card-time">${timeAgo}</span>
+      </div>
     </div>
     
     <p class="card-preview">${escapeHtml(preview)}</p>
@@ -99,7 +112,27 @@ export async function createConversationCard(chat, index, options = {}) {
     </div>
   `;
   
-  // Add click handler
+  // Add pin button handler
+  const pinBtn = card.querySelector('.pin-btn');
+  pinBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    await togglePinChat(index);
+    // Refresh the card
+    const newPinned = await getPinnedChats();
+    const newIsPinned = newPinned.includes(index);
+    pinBtn.innerHTML = newIsPinned ? '📌' : '📍';
+    pinBtn.title = newIsPinned ? 'Unpin' : 'Pin';
+    pinBtn.classList.toggle('pinned', newIsPinned);
+  });
+  
+  // Add export button handler
+  const exportBtn = card.querySelector('.export-btn');
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportChatAsMarkdown(chat, index);
+  });
+  
+  // Add click handler for card selection
   card.addEventListener('click', () => {
     // Remove selected from all cards
     document.querySelectorAll('.conversation-card').forEach(c => c.classList.remove('selected'));
@@ -113,6 +146,56 @@ export async function createConversationCard(chat, index, options = {}) {
   });
   
   return card;
+}
+
+// Toggle pin status for a chat
+async function togglePinChat(index) {
+  const pinned = await getPinnedChats();
+  const set = new Set(pinned);
+  if (set.has(index)) {
+    set.delete(index);
+  } else {
+    set.add(index);
+  }
+  await savePinnedChats([...set].sort((a, b) => a - b));
+  
+  // Dispatch event to refresh list
+  window.dispatchEvent(new CustomEvent('chatListUpdated'));
+}
+
+// Export single chat as markdown
+function exportChatAsMarkdown(chat, index) {
+  const metadata = {
+    chatGPT_conversation_title: chat.title || `Chat ${index + 1}`,
+    chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))],
+    chatGPT_create_time: chat.createdAt,
+    chatGPT_update_time: chat.updatedAt,
+    chatGPT_converted_time: new Date().toISOString(),
+    chatGPT_conversation_id: chat.id || `chat-${index}`
+  };
+
+  let md = `---\n`;
+  for (const [key, value] of Object.entries(metadata)) {
+    md += `${key}: ${Array.isArray(value) ? JSON.stringify(value) : `'${value}'`}\n`;
+  }
+  md += `---\n\n`;
+  md += `*Chat started ${new Date(metadata.chatGPT_create_time).toLocaleString()}*\n\n`;
+
+  chat.messages?.forEach((msg, j) => {
+    const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
+    const timestamp = new Date(msg.createdAt).toLocaleString();
+    md += `## ${speaker} — _${timestamp}_\n\n${msg.content}\n\n---\n\n`;
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const filename = `${metadata.chatGPT_conversation_title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_').slice(0, 60)}.md`;
+  
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 // Create empty state card

@@ -17,13 +17,14 @@ let currentMobileTab = 'chat';
 
 // Initialize mobile navigation
 export function initMobileNav() {
-  if (!isMobile()) return;
+  if (!isMobile() || mobileNavInitialized) return;
   
+  mobileNavInitialized = true;
   createMobileNav();
   setupMobileGestures();
   optimizeForMobile();
   
-  // Show chat view by default on mobile
+  // Show chat view by default on mobile (only on first load)
   showChatView();
   currentMobileTab = 'chat';
   updateTabUI();
@@ -235,13 +236,6 @@ function showActionsView() {
         <button class="mobile-action-btn" onclick="showStats(); hideActionsOverlay();">
           <span>📊</span> Statistics
         </button>
-        <button class="mobile-action-btn" onclick="exportAllData(); hideActionsOverlay();">
-          <span>💾</span> Export Data
-        </button>
-        <div class="mobile-action-divider"></div>
-        <button class="mobile-action-btn danger" onclick="clearAllChats(); hideActionsOverlay();">
-          <span>🗑️</span> Delete All
-        </button>
       </div>
     `;
     document.body.appendChild(sheet);
@@ -348,20 +342,30 @@ function optimizeForMobile() {
   });
 }
 
-// Handle resize
+// Handle resize - debounced to prevent keyboard open/close issues
+let resizeTimeout;
+let mobileNavInitialized = false;
 window.addEventListener('resize', () => {
-  if (isMobile()) {
-    initMobileNav();
-  } else {
-    // Remove mobile nav on desktop
-    const nav = document.getElementById('mobile-nav');
-    if (nav) nav.remove();
-    
-    // Show desktop elements
-    document.querySelectorAll('.desktop-only').forEach(el => {
-      el.style.display = '';
-    });
-  }
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    if (isMobile()) {
+      // Only create nav if not exists, don't reset current view
+      if (!document.getElementById('mobile-nav')) {
+        createMobileNav();
+        updateTabUI();
+      }
+    } else {
+      // Remove mobile nav on desktop
+      const nav = document.getElementById('mobile-nav');
+      if (nav) nav.remove();
+      mobileNavInitialized = false;
+      
+      // Show desktop elements
+      document.querySelectorAll('.desktop-only').forEach(el => {
+        el.style.display = '';
+      });
+    }
+  }, 250);
 });
 
 // Global close function for mobile sidebar

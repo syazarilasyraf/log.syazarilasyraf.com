@@ -345,11 +345,27 @@ async function renderChatList(filterTag = null) {
     return;
   }
   
-  // Filter by tag if specified
+  // Apply current filters if any are active (and no tag filter specified)
   let displayChats = chats;
   let displayIndices = chats.map((_, i) => i);
   
-  if (filterTag) {
+  // Check if we have active filters
+  const hasActiveFilters = currentFilters && (
+    currentFilters.datePreset !== 'all' ||
+    currentFilters.messageRange !== 'any' ||
+    currentFilters.tags.length > 0 ||
+    currentFilters.hasCode ||
+    currentFilters.hasLinks ||
+    currentFilters.hasImages
+  );
+  
+  if (hasActiveFilters && !filterTag) {
+    // Apply filters
+    const { results: filteredChats } = await applyFilters(chats, currentFilters, '');
+    displayChats = filteredChats;
+    // Get original indices for the filtered chats
+    displayIndices = displayChats.map(c => chats.findIndex(orig => orig.id === c.id));
+  } else if (filterTag) {
     const taggedIndices = await searchByTag(filterTag);
     displayChats = chats.filter((_, i) => taggedIndices.includes(i));
     displayIndices = taggedIndices;
