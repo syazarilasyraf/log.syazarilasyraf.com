@@ -1,7 +1,7 @@
 // Service Worker for ChatLog PWA
 // Cache-first strategy for assets, network-first for data
 
-const CACHE_NAME = 'chatlog-v6';
+const CACHE_NAME = 'chatlog-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
