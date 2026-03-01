@@ -1,95 +1,167 @@
-# ChatLog - ChatGPT Conversation Manager
+# ChatLog
 
-A powerful, privacy-focused tool to view, organize, and analyze your ChatGPT conversations. Fully client-side with optional cloud sync and browser extension.
+> The missing conversation manager for ChatGPT and AI assistants.
 
-**🚀 Live:** https://log.syazarilasyraf.com
+[![Live Demo](https://img.shields.io/badge/demo-live-green?style=flat-square)](https://log.syazarilasyraf.com)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
----
+ChatLog is a privacy-first, client-side application for organizing, analyzing, and extracting insights from AI conversations. No servers, no tracking, no data leaves your browser unless you explicitly configure it.
+
+## Why ChatLog?
+
+ChatGPT and other AI platforms provide exports, but offer no tools to:
+- **Search** across months of conversations
+- **Organize** with tags and categories
+- **Analyze** usage patterns and insights
+- **Summarize** long conversations automatically
+- **Preserve** conversations privately
+
+ChatLog fills this gap with a zero-compromise approach to privacy and user control.
 
 ## Features
 
 ### Core
-- 📁 **Import** - Upload `conversations.json` from ChatGPT export
-- 🔍 **Fuzzy Search** - Typo-tolerant search with highlighted matches
-- 🏷️ **Tagging** - Organize chats with custom tags
-- 📊 **Statistics** - Insights on your AI usage patterns
-- 💾 **50MB+ Storage** - IndexedDB (not limited 5MB localStorage)
-- 📱 **PWA** - Install as app, works offline
+- 📁 **Universal Import** — Supports ChatGPT exports, browser extension saves, and backup files
+- 🔍 **Fuzzy Search** — Typo-tolerant full-text search with highlighted matches
+- 🏷️ **Tagging System** — Organize conversations with custom tags
+- 📊 **Analytics Dashboard** — Insights on usage patterns, peak activity, top topics
+- 💾 **Local-First Storage** — 50MB+ IndexedDB storage (no 5MB limit)
+- 📱 **PWA** — Install as app, works offline
 
-### Advanced
-- 🌐 **Cloud Sync** - Cross-device backup via Supabase
-- 🖥️ **Virtual Scrolling** - Smooth performance with 1000+ message chats
-- 🔌 **Browser Extension** - Auto-save as you chat (see below)
-- 📤 **Multi-format Import** - Supports ChatGPT exports, extension exports, backups
+### AI-Powered (BYOK)
+All AI features use **Bring Your Own Key** — your OpenAI API key stays in your browser, you pay only for what you use.
 
----
+- 🤖 **Auto-Tagging** — AI suggests relevant tags (~$0.001/chat)
+- 📝 **Smart Summaries** — Summarize any conversation or time period (~$0.003-0.05)
+- 📅 **Flexible Reports** — Generate summaries for today, week, month, or custom ranges
+- 🎨 **Custom Prompts** — Fully customizable AI prompts with variable substitution
 
-## Browser Extension (Auto-Save) ✨ NEW
+### Browser Extension
+🔌 **Auto-Save for ChatGPT** — Automatically captures conversations as they happen
+- Zero manual exports
+- One-click sync to web app
+- Chrome/Edge compatible
 
-**Never manually export again.** The ChatLog extension automatically saves conversations as you chat.
-
-### Installation
-
-**Developer Mode (Available Now):**
-1. Clone this repo: `git clone https://github.com/syazarilasyraf/log.syazarilasyraf.com.git`
-2. Open Chrome → `chrome://extensions` → Enable "Developer mode"
-3. Click "Load unpacked" → Select the `extension/` folder
-4. Pin 📒 to your toolbar
-
-**Chrome Web Store** (Coming Soon - Submitting for review)
-
-### How It Works
-1. Navigate to ChatGPT (chat.openai.com or chatgpt.com)
-2. Start chatting — extension auto-detects and saves
-3. Click the 📒 icon to see stats and export
-4. Export downloads JSON → upload to ChatLog web app
-
-### Extension Features
-- ✅ Auto-detects conversations in real-time
-- ✅ Saves as you type (debounced, 2 second delay)
-- ✅ Shows conversation/message count
-- ✅ One-click export to ChatLog app
-- ✅ Local storage (privacy-first, no server)
-- ✅ Auto-cleanup when storage fills
-
-See [extension/README.md](extension/README.md) for details.
-
----
+### Cloud Sync (Optional)
+☁️ **Cross-Device Sync** — Self-hosted cloud backup via Supabase
+- End-to-end encryption by default
+- User controls all data
+- Optional feature — works 100% offline without it
 
 ## Quick Start
 
-### Web App
-1. Go to https://log.syazarilasyraf.com
-2. Upload your `conversations.json` (from ChatGPT → Settings → Data controls → Export)
-3. Or use the browser extension for auto-save
+### Web App (Recommended)
+1. Visit **[log.syazarilasyraf.com](https://log.syazarilasyraf.com)**
+2. Upload your `conversations.json` from ChatGPT (Settings → Data controls → Export)
+3. Or install the extension for auto-save
 
-### Supported Import Formats
-| Format | Source | Behavior |
-|--------|--------|----------|
-| `conversations.json` | ChatGPT Export | Merges with existing |
-| Extension Export | ChatLog Extension | Merges with existing |
-| Backup File | ChatLog Backup | Restores (replaces) |
-
-### Cloud Sync Setup (Optional)
-1. Create free account at [supabase.com](https://supabase.com)
-2. New project → SQL Editor → Run the SQL from `assets/js/sync.js` comments
-3. Copy Project URL and anon key
-4. Click ☁️ Sync in app → Paste credentials → Connect
-
----
+### Browser Extension
+1. Download this repository
+2. Open Chrome → `chrome://extensions` → Enable "Developer mode"
+3. Click "Load unpacked" → Select the `extension/` folder
+4. Pin to toolbar and chat — conversations auto-save
 
 ## Architecture
 
-| Feature | Implementation |
-|---------|---------------|
-| Storage | IndexedDB (~50MB) |
-| Search | Fuse.js (fuzzy, typo-tolerant) |
-| Virtual Scroll | Custom implementation |
-| Cloud | Supabase (optional) |
-| Extension | Manifest V3, content script |
-| PWA | Service Worker, offline-first |
+```
+┌─────────────────────────────────────────────────────────┐
+│  BROWSER (Client-Side Only)                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │   IndexedDB  │  │    Fuse.js   │  │  OpenAI API  │  │
+│  │   Storage    │  │    Search    │  │   (BYOK)     │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+│         ↓                  ↓                  ↓         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │              ChatLog Application                  │   │
+│  │  • Import/Export  • Tagging  • Analytics         │   │
+│  │  • AI Summaries   • Search   • PWA               │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                            ↓ (optional)
+                    ┌───────────────┐
+                    │   Supabase    │
+                    │  Cloud Sync   │
+                    └───────────────┘
+```
 
----
+### Tech Stack
+| Layer | Technology |
+|-------|------------|
+| Frontend | Vanilla ES6+ (zero dependencies except marked.js) |
+| Storage | IndexedDB with custom storage layer |
+| Search | Fuse.js (fuzzy matching) |
+| AI | OpenAI API (user-provided keys) |
+| Extension | Chrome Manifest V3 |
+| PWA | Service Worker, offline-capable |
+
+## Privacy & Security
+
+- **No tracking** — No Google Analytics, no cookies, no telemetry
+- **No servers** — Everything runs in your browser
+- **Local-first** — Data stays in IndexedDB unless you explicitly export
+- **BYOK for AI** — Your OpenAI key, your API calls, your billing
+- **Optional cloud** — Self-configured Supabase only if you want sync
+- **Open source** — Fully auditable codebase
+
+## Feature Deep Dive
+
+### Flexible Summarization
+Generate AI summaries for any time period:
+- **Today** — Daily standup recap
+- **Last 7 days** — Weekly review
+- **Custom range** — Project retrospectives
+- **Single chat** — Long conversation TL;DR
+
+All with customizable prompts and cost estimates before generating.
+
+### Smart Organization
+- **Time-based grouping** — Today, Yesterday, Last 7/30 Days, Months, Years
+- **Folder view** — VS Code-style collapsible folders
+- **Pinning** — Keep important chats at top
+- **Bulk operations** — Select, delete, export multiple chats
+- **Virtual scrolling** — Smooth performance with 1000+ message chats
+
+### Analytics
+Understand your AI usage:
+- Message distribution (You vs AI)
+- Word count analysis
+- Peak activity hours
+- Most active days/months
+- Tag usage statistics
+- Longest and most active conversations
+
+## Configuration
+
+### AI Features Setup
+1. Get API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. In ChatLog → 🤖 AI Settings → Paste key
+3. Key is stored locally in your browser only
+
+### Cloud Sync Setup (Advanced)
+1. Create free project at [supabase.com](https://supabase.com)
+2. Run SQL setup from `assets/js/sync.js` comments
+3. Copy Project URL and anon key to ChatLog settings
+
+## Roadmap
+
+### Current
+- [x] IndexedDB storage with 50MB+ capacity
+- [x] Fuzzy search with Fuse.js
+- [x] Virtual scrolling for large conversations
+- [x] PWA with offline support
+- [x] Tagging system
+- [x] Analytics dashboard
+- [x] Browser extension (auto-save)
+- [x] AI auto-tagging (BYOK)
+- [x] Flexible summarization
+- [x] Cloud sync (optional Supabase)
+
+### Planned
+- [ ] Chrome Web Store publication
+- [ ] Claude, Gemini, Perplexity import support
+- [ ] Chat sharing (public links)
+- [ ] Advanced search filters (date range, has code, etc.)
+- [ ] Mobile apps (Capacitor)
 
 ## Development
 
@@ -98,89 +170,49 @@ See [extension/README.md](extension/README.md) for details.
 git clone https://github.com/syazarilasyraf/log.syazarilasyraf.com.git
 cd log.syazarilasyraf.com
 
-# Local testing
+# Local development
 python -m http.server 8000
+# Or use any static file server
 
 # Extension development
 # Load extension/ folder as unpacked in chrome://extensions
 
 # Deploy
-git push origin main  # Auto-deploys to Netlify
+# Pushes to GitHub → Auto-deploys to Netlify via Git integration
+git push origin main
 ```
 
----
+## Browser Support
 
-## Privacy
+| Browser | Web App | Extension |
+|---------|---------|-----------|
+| Chrome | ✅ | ✅ |
+| Firefox | ✅ | ⏳ (Manifest V3 pending) |
+| Safari | ✅ | ❌ |
+| Edge | ✅ | ✅ |
 
-- **Zero tracking** — No Google Analytics, no cookies
-- **Local-first** — Data stays in your browser by default
-- **Optional cloud** — Only if you configure Supabase yourself
-- **Open source** — Audit every line
+## Contributing
 
----
+Contributions welcome! Areas of interest:
+- Additional AI platform imports (Claude, Gemini)
+- Localization/i18n
+- Accessibility improvements
+- Performance optimizations
 
-## Roadmap
-
-### Completed ✅
-- [x] IndexedDB storage (50MB+)
-- [x] Fuzzy search (Fuse.js)
-- [x] Virtual scrolling
-- [x] PWA support
-- [x] Tagging system
-- [x] Statistics dashboard
-- [x] Cloud sync (Supabase)
-- [x] Browser extension (auto-save)
-
-### Next Up 🔥
-- [ ] **Chrome Web Store** — Publish extension (reach 1000s of users)
-- [ ] **AI Auto-Tagging** — Auto-categorize with OpenAI API
-- [ ] **Import from Claude/Gemini** — Universal AI manager
-- [ ] **Chat Sharing** — Generate public links for specific chats
-- [ ] **Search Filters** — Date range, message count, has code, etc.
-
----
+Please open an issue to discuss before major changes.
 
 ## License
 
-MIT © [syazarilasyraf](https://github.com/syazarilasyraf)
+MIT License — see [LICENSE](LICENSE) for details.
 
----
+## Acknowledgments
 
-## Worthy Next Features (Ranked)
-
-Want to keep building? Here's what has highest ROI:
-
-### 1. Chrome Web Store Publish 🏆
-**Effort:** 1 day | **Impact:** Massive
-- Package extension for Chrome Web Store
-- Get real users, feedback, potential monetization
-- This transforms it from "personal tool" to "product"
-
-### 2. AI Auto-Tagging 🤖
-**Effort:** 1 day | **Impact:** High
-- Use OpenAI API to auto-suggest tags
-- Summarize conversations automatically
-- Cost: ~$0.01 per chat
-
-### 3. Claude/Gemini/Perplexity Import
-**Effort:** 1 day each | **Impact:** Medium
-- Parse other AI platform exports
-- Become the "universal AI conversation manager"
-
-### 4. Search Filters
-**Effort:** 1 day | **Impact:** Medium
-- Filter by date range, message count, has code blocks, has images
-- Power user feature
-
-### 5. Chat Sharing (Public Links)
-**Effort:** 2 days | **Impact:** High (viral)
-- Generate read-only links for specific conversations
-- Requires small backend for link storage
-
-**My recommendation:** Do #1 (Chrome Web Store) → Get users → Then decide based on feedback.
+- [Fuse.js](https://fusejs.io/) for fuzzy search
+- [marked](https://marked.js.org/) for Markdown rendering
+- [Supabase](https://supabase.com/) for optional cloud infrastructure
 
 ---
 
 <p align="center">
-  Built with ❤️ by <a href="https://syazarilasyraf.com">syazarilasyraf</a>
+  Built with privacy in mind. Your data, your control.
 </p>
