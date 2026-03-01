@@ -20,22 +20,26 @@ ChatLog fills this gap with a zero-compromise approach to privacy and user contr
 
 ## Features
 
+### Designed for Everyone
+- 🎯 **Two Modes**: Simple (default) for everyday users, Advanced for power users
+- 🔒 **Privacy First**: Everything stays on your device by default
+- 🔍 **Smart Search**: Find any conversation instantly, even with typos
+- 🏷️ **Auto-Organization**: AI suggests tags, or organize manually
+- 📱 **Works Everywhere**: Web app + browser extension, works offline
+
 ### Core
-- 📁 **Universal Import** — Supports ChatGPT exports, browser extension saves, and backup files
-- 🔍 **Fuzzy Search** — Typo-tolerant full-text search with highlighted matches
-- 🔎 **Advanced Filters** — Filter by date range, message count, tags, content type (code, links, images)
-- 🏷️ **Tagging System** — Organize conversations with custom tags
-- 📊 **Analytics Dashboard** — Insights on usage patterns, peak activity, top topics
-- 💾 **Local-First Storage** — 50MB+ IndexedDB storage (no 5MB limit)
-- 📱 **PWA** — Install as app, works offline
+- 📁 **Universal Import** — Bring conversations from ChatGPT, or auto-save with our extension
+- 🔎 **Smart Filters** — Find chats by date, length, content type, or tags (Advanced mode)
+- 💾 **Local Storage** — Your data never leaves your browser unless you explicitly choose to sync
+- 🤖 **AI-Powered** — Auto-tag and summarize using your own OpenAI account (optional)
 
-### AI-Powered (BYOK)
-All AI features use **Bring Your Own Key** — your OpenAI API key stays in your browser, you pay only for what you use.
+### AI Features (Optional)
+Choose to connect your OpenAI account for smart features. You control the costs.
 
-- 🤖 **Auto-Tagging** — AI suggests relevant tags (~$0.001/chat)
-- 📝 **Smart Summaries** — Summarize any conversation or time period (~$0.003-0.05)
-- 📅 **Flexible Reports** — Generate summaries for today, week, month, or custom ranges
-- 🎨 **Custom Prompts** — Fully customizable AI prompts with variable substitution
+- 🤖 **Auto-Tagging** — AI reads your conversation and suggests relevant tags
+- 📝 **Smart Summaries** — Get the TL;DR of long conversations or entire weeks
+- 💰 **Transparent Costs**: See exact cost before using AI features (~$0.001-0.05 per use)
+- 🔐 **Your Account**: Uses your OpenAI API key, stored only in your browser
 
 ### Browser Extension
 🔌 **Auto-Save for ChatGPT** — Automatically captures conversations as they happen
@@ -51,16 +55,21 @@ All AI features use **Bring Your Own Key** — your OpenAI API key stays in your
 
 ## Quick Start
 
-### Web App (Recommended)
-1. Visit **[log.syazarilasyraf.com](https://log.syazarilasyraf.com)**
-2. Upload your `conversations.json` from ChatGPT (Settings → Data controls → Export)
-3. Or install the extension for auto-save
+### 1. Try It Now (No Installation)
+Visit **[log.syazarilasyraf.com](https://log.syazarilasyraf.com)** and upload your ChatGPT export:
+1. Go to ChatGPT → Settings → Data controls → Export
+2. Download the ZIP file, extract it
+3. Upload `conversations.json` to ChatLog
 
-### Browser Extension
+### 2. Auto-Save (Recommended)
+Install the browser extension to automatically save conversations as you chat:
 1. Download this repository
-2. Open Chrome → `chrome://extensions` → Enable "Developer mode"
+2. Open Chrome → `chrome://extensions` → Enable "Developer mode"  
 3. Click "Load unpacked" → Select the `extension/` folder
-4. Pin to toolbar and chat — conversations auto-save
+4. Pin to toolbar — conversations now save automatically
+
+### 3. Switch to Advanced (Optional)
+After a few days, you'll be prompted to try Advanced mode with analytics, custom filters, and more. Or switch anytime using the button in the sidebar.
 
 ## Architecture
 
@@ -175,15 +184,13 @@ Understand your AI usage:
 ## Roadmap
 
 ### Current
-- [x] IndexedDB storage with 50MB+ capacity
-- [x] Fuzzy search with Fuse.js
-- [x] Advanced search filters
-- [x] Virtual scrolling for large conversations
-- [x] PWA with offline support
-- [x] Tagging system
-- [x] Analytics dashboard
-- [x] Browser extension (auto-save)
-- [x] AI auto-tagging (BYOK)
+- [x] **Simple/Advanced modes** — Accessible to everyone, powerful for pros
+- [x] Local-first storage — Your data stays private
+- [x] Smart search with filters
+- [x] AI-powered tagging and summaries
+- [x] Browser extension for auto-save
+- [x] PWA — Works offline, installable
+- [x] Optional cloud sync
 - [x] Flexible summarization
 - [x] Cloud sync (optional Supabase)
 
