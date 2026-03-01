@@ -69,6 +69,8 @@ import {
   getUserMode,
   setUserMode,
   toggleUserMode,
+  isFeatureVisible,
+  getFeatureDescription,
   initializeUserMode,
   shouldPromptAdvanced,
   markAdvancedPromptSeen,
@@ -94,17 +96,6 @@ import {
   addRipple,
   initAnimations
 } from './animations.js';
-import {
-  getUserMode,
-  setUserMode,
-  toggleUserMode,
-  isFeatureVisible,
-  getFeatureDescription,
-  initializeUserMode,
-  shouldPromptAdvanced,
-  markAdvancedPromptSeen,
-  MODES
-} from './user-mode.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
