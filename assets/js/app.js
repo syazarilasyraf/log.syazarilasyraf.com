@@ -156,6 +156,9 @@ async function init() {
 function updateModeUI() {
   const mode = getUserMode();
   
+  // Set body attribute for CSS selectors
+  document.body.setAttribute('data-mode', mode);
+  
   // Update mode toggle button
   const btn = document.getElementById('modeToggle');
   if (btn) {
@@ -173,13 +176,22 @@ function updateModeUI() {
   
   // Show/hide advanced elements
   document.querySelectorAll('.advanced-only').forEach(el => {
-    el.style.display = mode === MODES.ADVANCED ? 'block' : 'none';
+    // Check if element has inline display style that should be preserved
+    const defaultDisplay = el.tagName === 'BUTTON' ? 'inline-block' : 'block';
+    el.style.display = mode === MODES.ADVANCED ? defaultDisplay : 'none';
   });
   
   // Show/hide simple elements
   document.querySelectorAll('.simple-only').forEach(el => {
-    el.style.display = mode === MODES.SIMPLE ? 'block' : 'none';
+    const defaultDisplay = el.tagName === 'BUTTON' ? 'inline-block' : 'block';
+    el.style.display = mode === MODES.SIMPLE ? defaultDisplay : 'none';
   });
+  
+  // Update filter button visibility
+  const filterBtn = document.getElementById('filterToggle');
+  if (filterBtn) {
+    filterBtn.style.display = mode === MODES.ADVANCED ? 'block' : 'none';
+  }
 }
 
 window.toggleMode = function() {

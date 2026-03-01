@@ -11,38 +11,36 @@
     <button id="bulkPinToggle" class="bulk-pin pin-button">📌</button>
   </div>
   
-  <button id="toggleBulk" class="toggle-bulk pencil-button">✏️</button>
-  <button id="burgerButton" class="burger-button mobile-only">💬</button>
+  <button id="toggleBulk" class="toggle-bulk pencil-button advanced-only" style="display: none;">✏️</button>
   
   <aside id="sidebar" class="sidebar">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="margin: 0;">ChatLog</h2>
-      <button id="modeToggle" onclick="toggleMode()" style="background: var(--accent); border: none; padding: 4px 12px; border-radius: 12px; font-size: 0.75em; cursor: pointer; color: var(--fg);">
-        Simple
-      </button>
-    </div>
-    
-    <p id="storageInfo" style="font-size: 0.8em; color: #888; margin-bottom: 1rem;">
-      🔒 Stored securely on your device
-    </p>
-    
-    <button class="toggle-bulk bulk-btn" style="display: none;">✏️ Select</button>
-    <button id="toggleFolderView" title="Toggle Folder View" style="background: none; border: none; padding: 0; margin-left: 0.5em; font-size: 1.2em; cursor: pointer; vertical-align: middle; display: none;">
-      <span aria-label="Toggle Folder View" style="display: inline-block; line-height: 1;">📁</span>
-    </button> 
-    <div id="searchContainer">
-      <div style="display: flex; gap: 0.5rem;">
-        <input type="text" id="chatSearch" placeholder="🔍 Search chats..." style="flex: 1;" />
-        <button id="filterToggle" onclick="toggleFilterPanel()" title="Advanced filters" style="background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 0.5rem; border-radius: 4px; cursor: pointer;">
-          ⚙️
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h2 style="margin: 0; font-size: 1.5rem;">ChatLog</h2>
+        <button id="modeToggle" onclick="toggleMode()" style="background: var(--accent); border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; color: var(--fg); font-weight: 600;">
+          Simple
         </button>
       </div>
-      <div id="activeFilters" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 4px; font-size: 0.85em; color: #888;"></div>
-      <div id="searchResults"></div>
+      <p id="storageInfo" style="font-size: 0.75rem; color: #888; margin: 0 0 1rem 0;">🔒 Stored securely on your device</p>
+      
+      <!-- Search -->
+      <div id="searchContainer" style="margin-bottom: 1rem;">
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="chatSearch" placeholder="🔍 Search chats..." style="flex: 1;" />
+          <button id="filterToggle" onclick="toggleFilterPanel()" title="Filters" class="advanced-only" style="background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 0.5rem; border-radius: 4px; cursor: pointer; display: none;">
+            ⚙️
+          </button>
+        </div>
+        <div id="activeFilters" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 4px; font-size: 0.85em; color: #888;"></div>
+        <div id="searchResults"></div>
+      </div>
     </div>
     
-    <!-- Filter Panel -->
-    <div id="filterPanel" style="display: none; padding: 1rem; background: var(--bg-light); border-bottom: 1px solid var(--border); max-height: 400px; overflow-y: auto;">
+    <!-- Sidebar Content (Scrollable) -->
+    <div class="sidebar-content">
+      <!-- Filter Panel (Hidden by default) -->
+      <div id="filterPanel" class="advanced-only" style="display: none; padding: 1rem; background: var(--bg); border-radius: 8px; margin-bottom: 1rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h4 style="margin: 0; color: var(--link);">Advanced Filters</h4>
         <button onclick="clearAllFilters()" style="background: none; border: none; color: #ff6666; cursor: pointer; font-size: 0.85em;">Clear all</button>
@@ -127,12 +125,22 @@
           </label>
         </div>
       </div>
+      </div>
+      <!-- Chat List -->
+      <div id="chatList"></div>
     </div>
-    <div id="chatList"></div>
+    
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <button class="toggle-bulk bulk-btn advanced-only" style="display: none; width: 100%; margin-bottom: 0.5rem;">✏️ Select Chats</button>
+      <button id="toggleFolderView" title="Toggle Folder View" class="advanced-only" style="display: none; background: none; border: none; color: #888; font-size: 0.85em; cursor: pointer; width: 100%; text-align: left;">
+        📁 Toggle Folder View
+      </button>
+    </div>
   </aside>
 
   <main>
-    <h1>logs - ChatGPT</h1>
+    <h1 style="display: none;">ChatLog</h1>
 
     <div class="intro-box">
       <p style="font-size: 1.1em; margin-bottom: 0.5rem;"><strong>Your AI conversations, organized.</strong></p>
@@ -141,21 +149,35 @@
         🔍 <strong>Searchable:</strong> Find any conversation instantly<br>
         🏷️ <strong>Organized:</strong> Tag and categorize your chats
       </p>
-      <p style="font-size: 0.9em; color: #888;">
+      <p style="font-size: 0.9em; color: #888; margin-bottom: 1rem;">
         Upload your ChatGPT export or use our browser extension to auto-save.
       </p>
+      <details style="font-size: 0.85em; color: #888;">
+        <summary style="cursor: pointer; color: var(--link);">Learn more</summary>
+        <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-light); border-radius: 8px;">
+          <p style="margin: 0 0 0.5rem 0;"><strong>🔒 Privacy First:</strong> Your data is stored locally in your browser using IndexedDB. It never leaves your device unless you explicitly export or enable cloud sync.</p>
+          <p style="margin: 0 0 0.5rem 0;"><strong>🤖 AI Features:</strong> Optional AI tagging and summaries use your own OpenAI API key (BYOK). You pay only for what you use (~$0.001 per chat).</p>
+          <p style="margin: 0;"><strong>📱 Simple Mode:</strong> Switch to Advanced mode for detailed analytics, custom filters, and more powerful features.</p>
+        </div>
+      </details>
     </div>
 
-    <div class="upload-controls">
+    <!-- File Management - Primary Actions -->
+    <div class="upload-controls primary-actions">
       <label class="upload-btn">
         📂 Choose Files
         <input type="file" id="fileInput" accept=".json" multiple hidden>
       </label>
       <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
       <button onclick="exportAllData()" class="export-btn" title="Backup all data">💾 Backup</button>
+    </div>
+    
+    <!-- Tools - Secondary Actions -->
+    <div class="upload-controls secondary-actions">
       <button onclick="showStats()" class="stats-btn desktop-only" title="View statistics">📊 Stats</button>
       <button onclick="showAISettings()" class="ai-btn desktop-only" title="AI features">🤖 AI</button>
       <button onclick="showSyncSettings()" class="sync-btn desktop-only" title="Cloud sync settings">☁️ Sync</button>
+    </div>
       
       <div id="bulkControls" style="display: none;" class="bulk-controls ">
         <button class="bulk-delete delete-btn">🗑️ Delete Selected</button>

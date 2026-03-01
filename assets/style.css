@@ -75,13 +75,33 @@
     }
 
     aside {
-      width: 250px;
+      width: 280px;
       padding: 1rem;
       background-color: var(--bg-light);
       border-right: 1px solid var(--border);
-      overflow-y: auto;
       height: 100vh;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    aside .sidebar-header {
+      flex-shrink: 0;
+    }
+    
+    aside .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      margin: 0 -1rem;
+      padding: 0 1rem;
+    }
+    
+    aside .sidebar-footer {
+      flex-shrink: 0;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
     }
 
     aside ul#chat-list {
@@ -1336,6 +1356,30 @@
       to { transform: translate(-50%, 100%); opacity: 0; }
     }
 
+    /* Simple/Advanced Mode Visibility */
+    body[data-mode="simple"] .advanced-only {
+      display: none !important;
+    }
+    
+    body[data-mode="advanced"] .simple-only {
+      display: none !important;
+    }
+    
+    /* Primary vs Secondary Actions */
+    .primary-actions {
+      margin-bottom: 0.75rem;
+    }
+    
+    .secondary-actions {
+      opacity: 0.8;
+      margin-bottom: 1.5rem;
+    }
+    
+    .secondary-actions button {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.75rem;
+    }
+    
     /* Mode indicator */
     .mode-badge {
       display: inline-block;
