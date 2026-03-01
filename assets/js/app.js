@@ -75,6 +75,12 @@ import {
   MODES
 } from './user-mode.js';
 import {
+  renderConversationCards,
+  createEmptyStateCard,
+  formatRelativeTime,
+  getTagColor
+} from './cards.js';
+import {
   getUserMode,
   setUserMode,
   toggleUserMode,
@@ -310,15 +316,15 @@ function readFileAsText(file) {
 // ==================== CHAT LIST RENDERING ====================
 async function renderChatList(filterTag = null) {
   const chats = await getStoredChats();
-  const pinnedIndices = new Set(await getPinnedChats());
-  const allTags = await getAllTags();
+  const mode = getUserMode();
   const chatListEl = elements.chatList();
   
   if (!chatListEl) return;
   chatListEl.innerHTML = '';
 
   if (chats.length === 0) {
-    chatListEl.innerHTML = '<p style="padding: 1rem; color: #888;">No chats yet. Upload a conversations.json file to get started.</p>';
+    // Use nice empty state card
+    chatListEl.appendChild(createEmptyStateCard('default'));
     return;
   }
   
@@ -351,6 +357,9 @@ async function renderChatList(filterTag = null) {
       const btn = document.createElement('button');
       btn.className = 'tag-chip' + (filterTag === tag ? ' active' : '');
       btn.textContent = tag;
+      btn.style.background = `${getTagColor(tag)}20`;
+      btn.style.borderColor = `${getTagColor(tag)}40`;
+      btn.style.color = getTagColor(tag);
       btn.onclick = () => renderChatList(tag);
       tagBar.appendChild(btn);
     });
@@ -358,13 +367,18 @@ async function renderChatList(filterTag = null) {
     chatListEl.appendChild(tagBar);
   }
 
-  const sections = groupChatsByDateWithTags(displayChats, displayIndices, pinnedIndices, allTags);
-
-  if (folderViewEnabled) {
-    renderFolderView(chatListEl, sections);
-  } else {
-    renderFlatView(chatListEl, sections);
-  }
+  // Use card-based layout for better UX
+  await renderConversationCards(chatListEl, displayChats, {
+    showTags: true,
+    compact: mode === MODES.SIMPLE
+  });
+  
+  // Add click handlers to cards
+  chatListEl.querySelectorAll('.conversation-card').forEach(card => {
+    card.addEventListener('cardSelect', (e) => {
+      selectChat(e.detail.index);
+    });
+  });
 }
 
 function groupChatsByDate(chats, pinnedIndices) {
