@@ -294,23 +294,6 @@
     background-color: rgba(255, 102, 102, 0.1);
     }
 
-    .bulk-btn {
-    background: transparent;
-    color: #8ab4f8;
-    padding: 0.5rem 1.6rem;
-    border: 1px solid #8ab4f8;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: bold;
-    display: inline-block;
-    transition: background-color 0.2s;
-    }
-
-    .bulk-btn:hover {
-    background-color: #5a9cf0;
-    }
-
     .export-btn {
     background: transparent;
     color: #8ab4f8;
@@ -418,106 +401,7 @@
       z-index: 1001;
     }
 
-    /* Pencil button: fixed on mobile, hidden on desktop */
-    .pencil-button {
-      background-color: transparent;
-      font-size: 1.5em;
-      border: 2;
-      cursor: pointer;
-      position: fixed;
-      right: 1em;
-      bottom: 3em;
-      z-index: 1001;
-    }
-
-    /* Export button: fixed on mobile, hidden on desktop */
-    .export-button {
-      background-color: transparent;
-      font-size: 1.5em;
-      border: 2;
-      cursor: pointer;
-      position: fixed;
-      right: 1em;
-      bottom: 5em;
-      z-index: 1001;
-    }
-
-    /* Pin button: fixed on mobile, hidden on desktop */
-    .pin-button {
-      background-color: transparent;
-      font-size: 1.5em;
-      border: 2;
-      cursor: pointer;
-      position: fixed;
-      right: 3.5em;
-      bottom: 1em;
-      z-index: 1001;
-    }
-
-    /* Delete button: fixed on mobile, hidden on desktop */
-    .delete-button {
-      background-color: transparent;
-      font-size: 1.5em;
-      border: 2;
-      cursor: pointer;
-      position: fixed;
-      right: 1em;
-      bottom: 7em;
-      z-index: 1001;
-    }
-
-    /* Hide burger on desktop */
-    @media (min-width: 768px) {
-      .burger-button {
-        display: none;
-      }
-      .pencil-button {
-        display: none;
-      }
-      .export-button {
-        display: none;
-      }
-      .delete-button {
-        display: none;
-      }
-      .pin-button {
-        display: none;
-      }
-    }
-
-    /* Sidebar: hidden offscreen on mobile */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -250px;
-      width: 250px;
-      height: 100%;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-      transition: left 0.3s ease;
-      z-index: 1000;
-      padding: 1em;
-      box-sizing: border-box;
-      background-color: var(--bg-light);
-      overflow-y: auto;
-    }
-
-    /* Sidebar visible when open */
-    .sidebar.open {
-      left: 0;
-    }
-
-    /* Main content area: no margin on mobile by default */
-    .chat-main {
-      margin-left: 0;
-      transition: margin-left 0.3s ease;
-      padding-top: 3em; /* avoid burger */
-      padding-left: 1em;
-    }
-
-    /* Push main content when sidebar open on mobile */
-    .sidebar.open ~ .chat-main {
-      margin-left: 250px;
-    }
+    /* Note: Old mobile floating buttons removed - using bottom nav instead */
 
     /* On desktop, sidebar static & visible */
     @media (min-width: 768px) {
@@ -1140,7 +1024,7 @@
       margin-bottom: 1rem;
     }
 
-    /* Mobile Navigation */
+    /* Mobile Navigation - Always on top, above everything */
     #mobile-nav {
       position: fixed;
       bottom: 0;
@@ -1150,9 +1034,31 @@
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-around;
-      padding: 0.5rem 0;
-      z-index: 1000;
+      padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
+      z-index: 100000;
       backdrop-filter: blur(10px);
+    }
+
+    /* Toolbar buttons */
+    .top-toolbar {
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .toolbar-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--bg-light);
+      border-color: var(--link);
     }
 
     .mobile-tab {
@@ -1226,19 +1132,19 @@
       padding: 1rem;
     }
 
-    /* Mobile Action Sheet */
+    /* Mobile Action Sheet - positioned above bottom nav */
     .mobile-sheet {
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: 60px; /* Above bottom nav */
       background: var(--bg-light);
       border-radius: 20px 20px 0 0;
-      z-index: 2000;
+      z-index: 99999; /* Below nav (100000) but above content */
       display: none;
       transform: translateY(100%);
       transition: transform 0.3s ease;
-      max-height: 70vh;
+      max-height: calc(80vh - 60px);
     }
 
     .mobile-sheet.visible {
@@ -1306,10 +1212,30 @@
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         z-index: 1500;
+        display: none; /* Hidden by default on mobile */
+        flex-direction: column;
+        padding: 1rem;
+        background-color: var(--bg-light);
+        border-right: 1px solid var(--border);
+        box-sizing: border-box;
       }
 
       aside.sidebar.open {
         transform: translateX(0);
+        display: flex;
+      }
+
+      .mobile-only {
+        display: block !important;
+      }
+
+      .sidebar-close-btn {
+        color: var(--fg);
+        opacity: 0.7;
+      }
+
+      .sidebar-close-btn:hover {
+        opacity: 1;
       }
 
       main {
@@ -1337,16 +1263,22 @@
         justify-content: center;
       }
 
-      /* Simpler filters on mobile */
+      /* Simpler filters on mobile - fullscreen overlay */
       #filterPanel {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
-        bottom: 0;
-        z-index: 2000;
-        max-height: 100vh;
+        bottom: 80px; /* Leave space for bottom nav */
+        z-index: 9000; /* Below mobile nav (9999) but above sidebar */
+        max-height: calc(100vh - 80px);
         border-radius: 0;
+        overflow-y: auto;
+        display: none; /* Controlled by JS */
+      }
+
+      #filterPanel[style*="block"] {
+        display: block !important;
       }
 
       .desktop-only {
@@ -1404,16 +1336,6 @@
     /* Primary vs Secondary Actions */
     .primary-actions {
       margin-bottom: 0.75rem;
-    }
-    
-    .secondary-actions {
-      opacity: 0.8;
-      margin-bottom: 1.5rem;
-    }
-    
-    .secondary-actions button {
-      font-size: 0.85rem;
-      padding: 0.4rem 0.75rem;
     }
     
     /* Mode indicator */

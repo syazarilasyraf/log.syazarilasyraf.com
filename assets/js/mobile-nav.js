@@ -13,7 +13,7 @@ export function isTouchDevice() {
 }
 
 // Mobile navigation state
-let currentMobileTab = 'browse';
+let currentMobileTab = 'chat';
 
 // Initialize mobile navigation
 export function initMobileNav() {
@@ -22,6 +22,11 @@ export function initMobileNav() {
   createMobileNav();
   setupMobileGestures();
   optimizeForMobile();
+  
+  // Show chat view by default on mobile
+  showChatView();
+  currentMobileTab = 'chat';
+  updateTabUI();
 }
 
 // Create bottom navigation bar
@@ -31,15 +36,15 @@ function createMobileNav() {
   const nav = document.createElement('nav');
   nav.id = 'mobile-nav';
   nav.innerHTML = `
-    <button class="mobile-tab ${currentMobileTab === 'browse' ? 'active' : ''}" data-tab="browse">
+    <button class="mobile-tab" data-tab="browse">
       <span class="mobile-tab-icon">📚</span>
       <span class="mobile-tab-label">Browse</span>
     </button>
-    <button class="mobile-tab ${currentMobileTab === 'search' ? 'active' : ''}" data-tab="search">
+    <button class="mobile-tab" data-tab="search">
       <span class="mobile-tab-icon">🔍</span>
       <span class="mobile-tab-label">Search</span>
     </button>
-    <button class="mobile-tab ${currentMobileTab === 'actions' ? 'active' : ''}" data-tab="actions">
+    <button class="mobile-tab" data-tab="actions">
       <span class="mobile-tab-icon">⚡</span>
       <span class="mobile-tab-label">Actions</span>
     </button>
@@ -56,14 +61,26 @@ function createMobileNav() {
   document.body.appendChild(nav);
 }
 
+// Update tab UI without changing view
+function updateTabUI() {
+  document.querySelectorAll('.mobile-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === currentMobileTab);
+  });
+}
+
 // Switch mobile tabs
 export function switchMobileTab(tab) {
-  currentMobileTab = tab;
+  // Handle toggling: clicking same tab closes/opens appropriate view
+  if (tab === 'browse' && currentMobileTab === 'browse') {
+    // Toggle sidebar off and show chat
+    showChatView();
+    currentMobileTab = 'chat';
+    updateTabUI();
+    return;
+  }
   
-  // Update active state
-  document.querySelectorAll('.mobile-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tab);
-  });
+  currentMobileTab = tab;
+  updateTabUI();
   
   // Handle tab content
   switch (tab) {
@@ -79,19 +96,44 @@ export function switchMobileTab(tab) {
   }
 }
 
+// Show main chat view (default mobile view)
+function showChatView() {
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('main');
+  
+  if (sidebar) {
+    sidebar.classList.remove('open');
+    // Delay hiding display to allow transition
+    setTimeout(() => {
+      if (!sidebar.classList.contains('open')) {
+        sidebar.style.display = 'none';
+      }
+    }, 300);
+  }
+  
+  if (main) {
+    main.style.display = 'block';
+  }
+  
+  // Hide other overlays
+  hideSearchOverlay();
+  hideActionsOverlay();
+}
+
 function showBrowseView() {
   // Show sidebar (as slide-over on mobile)
   const sidebar = document.getElementById('sidebar');
   const main = document.querySelector('main');
   
   if (sidebar) {
-    sidebar.style.transform = 'translateX(0)';
-    sidebar.style.position = 'fixed';
-    sidebar.style.zIndex = '100';
+    sidebar.style.display = 'flex';
+    // Force reflow to ensure transition works
+    sidebar.offsetHeight;
+    sidebar.classList.add('open');
   }
   
   if (main) {
-    main.style.display = 'block';
+    main.style.display = 'none'; // Hide main content on mobile when browsing
   }
   
   // Hide other views
@@ -100,6 +142,18 @@ function showBrowseView() {
 }
 
 function showSearchView() {
+  // Close sidebar and show main content first
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('main');
+  
+  if (sidebar) {
+    sidebar.classList.remove('open');
+    setTimeout(() => {
+      if (!sidebar.classList.contains('open')) sidebar.style.display = 'none';
+    }, 300);
+  }
+  if (main) main.style.display = 'block';
+  
   // Show full-screen search
   let overlay = document.getElementById('mobile-search-overlay');
   
@@ -128,6 +182,18 @@ function showSearchView() {
 }
 
 function showActionsView() {
+  // Close sidebar and show main content first
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('main');
+  
+  if (sidebar) {
+    sidebar.classList.remove('open');
+    setTimeout(() => {
+      if (!sidebar.classList.contains('open')) sidebar.style.display = 'none';
+    }, 300);
+  }
+  if (main) main.style.display = 'block';
+  
   // Show actions sheet
   let sheet = document.getElementById('mobile-actions-sheet');
   
@@ -229,9 +295,11 @@ function setupMobileGestures() {
     const swipeThreshold = 100;
     const diff = touchStartX - touchEndX;
     
-    // Swipe left to close sidebar
+    // Swipe left to close sidebar and show chat
     if (diff > swipeThreshold && sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
+      showChatView();
+      currentMobileTab = 'chat';
+      updateTabUI();
     }
   }
 }
@@ -275,6 +343,13 @@ window.addEventListener('resize', () => {
     });
   }
 });
+
+// Global close function for mobile sidebar
+window.closeMobileSidebar = function() {
+  showChatView();
+  currentMobileTab = 'chat';
+  updateTabUI();
+};
 
 // Export for use
 export { currentMobileTab };

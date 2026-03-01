@@ -98,10 +98,8 @@ import {
 } from './animations.js';
 
 // ==================== STATE ====================
-let bulkEditMode = false;
 let folderViewEnabled = false;
 let confirmClearAll = false;
-let confirmDeleteSelected = false;
 
 // ==================== DOM ELEMENTS ====================
 const elements = {
@@ -174,17 +172,13 @@ function updateModeUI() {
       : '🔒 Local IndexedDB storage';
   }
   
-  // Show/hide advanced elements
+  // Show/hide advanced elements - CSS handles visibility via body[data-mode]
+  // Only update elements that need explicit state (like filterPanel)
   document.querySelectorAll('.advanced-only').forEach(el => {
-    // Check if element has inline display style that should be preserved
-    const defaultDisplay = el.tagName === 'BUTTON' ? 'inline-block' : 'block';
-    el.style.display = mode === MODES.ADVANCED ? defaultDisplay : 'none';
-  });
-  
-  // Show/hide simple elements
-  document.querySelectorAll('.simple-only').forEach(el => {
-    const defaultDisplay = el.tagName === 'BUTTON' ? 'inline-block' : 'block';
-    el.style.display = mode === MODES.SIMPLE ? defaultDisplay : 'none';
+    // Clear any previous inline display to let CSS take over
+    if (el.id !== 'filterPanel') {
+      el.style.display = '';
+    }
   });
   
   // Update filter button visibility
@@ -231,23 +225,7 @@ function setupEventListeners() {
     elements.sidebar()?.classList.toggle('open');
   });
   
-  // Bulk edit toggles
-  document.querySelectorAll('.toggle-bulk').forEach(btn => {
-    btn.addEventListener('click', toggleBulkMode);
-  });
-  
-  // Bulk actions
-  document.querySelectorAll('.bulk-delete').forEach(btn => {
-    btn.addEventListener('click', handleBulkDelete);
-  });
-  
-  document.querySelectorAll('.bulk-export').forEach(btn => {
-    btn.addEventListener('click', exportSelectedChats);
-  });
-  
-  document.querySelectorAll('.bulk-pin').forEach(btn => {
-    btn.addEventListener('click', handleBulkPin);
-  });
+  // Note: Bulk edit UI removed in redesign - functionality available in Actions menu
   
   // Folder view toggle
   document.getElementById('toggleFolderView')?.addEventListener('click', () => {
@@ -485,22 +463,11 @@ function createChatEntryElement(chat, index, tags = []) {
     ? `<div class="entry-tags">${tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
     : '';
 
-  if (bulkEditMode) {
-    entry.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-        <span class="chat-title" style="flex: 1;">${escapeHtml(chat.title) || `Chat ${index + 1}`}</span>
-        <input type="checkbox" class="chat-select" data-index="${index}" style="margin-left: 0.5em; width: 1em; height: 1em;">
-      </div>
-      ${tagsHtml}
-    `;
-    entry.querySelector('.chat-title')?.addEventListener('click', () => selectChat(index));
-  } else {
-    entry.innerHTML = `
-      <div class="chat-title">${escapeHtml(chat.title) || `Chat ${index + 1}`}</div>
-      ${tagsHtml}
-    `;
-    entry.onclick = () => selectChat(index);
-  }
+  entry.innerHTML = `
+    <div class="chat-title">${escapeHtml(chat.title) || `Chat ${index + 1}`}</div>
+    ${tagsHtml}
+  `;
+  entry.onclick = () => selectChat(index);
 
   return entry;
 }
@@ -793,126 +760,6 @@ async function deleteMessage(chatIndex, msgIndex) {
   
   // Reset search index since content changed
   resetSearchIndex();
-}
-
-// ==================== BULK OPERATIONS ====================
-function toggleBulkMode() {
-  bulkEditMode = !bulkEditMode;
-  document.querySelectorAll('.bulk-controls').forEach(el => {
-    el.style.display = bulkEditMode ? 'block' : 'none';
-  });
-  renderChatList();
-}
-
-function getSelectedIndexes() {
-  return Array.from(document.querySelectorAll('.chat-select:checked'))
-    .map(cb => parseInt(cb.dataset.index));
-}
-
-async function handleBulkDelete() {
-  const selected = getSelectedIndexes();
-  if (!selected.length) return;
-
-  if (!confirmDeleteSelected) {
-    document.querySelectorAll('.bulk-delete').forEach(btn => {
-      btn.textContent = 'Sure?';
-      btn.style.color = 'orange';
-    });
-    confirmDeleteSelected = true;
-    setTimeout(() => {
-      document.querySelectorAll('.bulk-delete').forEach(btn => {
-        btn.textContent = btn.classList.contains('delete-btn') ? '🗑️ Delete Selected' : '🗑️';
-        btn.style.color = '';
-      });
-      confirmDeleteSelected = false;
-    }, 3000);
-  } else {
-    const chats = await getStoredChats();
-    const filtered = chats.filter((_, idx) => !selected.includes(idx));
-    await saveChatsToDB(filtered);
-    
-    // Update pinned indices
-    const pinned = await getPinnedChats();
-    const newPinned = pinned
-      .filter(idx => !selected.includes(idx))
-      .map(idx => {
-        const removedBefore = selected.filter(s => s < idx).length;
-        return idx - removedBefore;
-      });
-    await savePinnedChats(newPinned);
-    
-    // Update tag indices
-    await updateTagIndices(selected);
-    
-    resetSearchIndex(); // Reset fuzzy search cache
-    await renderChatList();
-    confirmDeleteSelected = false;
-  }
-}
-
-async function handleBulkPin() {
-  const selected = getSelectedIndexes();
-  if (!selected.length) return;
-
-  const pinned = new Set(await getPinnedChats());
-  selected.forEach(idx => {
-    if (pinned.has(idx)) pinned.delete(idx);
-    else pinned.add(idx);
-  });
-
-  await savePinnedChats([...pinned]);
-  await renderChatList();
-}
-
-async function exportSelectedChats() {
-  const selected = getSelectedIndexes();
-  if (!selected.length) {
-    alert('No chats selected for export.');
-    return;
-  }
-
-  const chats = await getStoredChats();
-  const toExport = selected.map(idx => chats[idx]).filter(Boolean);
-
-  for (let i = 0; i < toExport.length; i++) {
-    const chat = toExport[i];
-    const metadata = {
-      chatGPT_conversation_title: chat.title || `Chat ${i + 1}`,
-      chatGPT_dates: [...new Set(chat.messages?.map(m => m.createdAt?.split('T')[0]))],
-      chatGPT_create_time: chat.createdAt,
-      chatGPT_update_time: chat.updatedAt,
-      chatGPT_converted_time: new Date().toISOString(),
-      chatGPT_conversation_id: chat.id
-    };
-
-    let md = `---\n`;
-    for (const [key, value] of Object.entries(metadata)) {
-      md += `${key}: ${Array.isArray(value) ? JSON.stringify(value) : `'${value}'`}\n`;
-    }
-    md += `---\n\n`;
-    md += `*Chat started ${new Date(metadata.chatGPT_create_time).toLocaleString()}*\n`;
-    md += `- [Continue at ChatGPT](https://chat.openai.com/c/${metadata.chatGPT_conversation_id})\n\n---\n`;
-
-    chat.messages?.forEach((msg, j) => {
-      const speaker = msg.role === 'user' ? 'You' : 'ChatGPT';
-      const timestamp = new Date(msg.createdAt).toLocaleString();
-      const content = msg.content.trim().split('\n').map(line => `> ${line}`).join('\n');
-      md += `\n### ${j + 1}. ${speaker} — _${timestamp}_\n\n${content}\n\n`;
-    });
-
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const filename = `${metadata.chatGPT_conversation_title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_').slice(0, 60)}.md`;
-    
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    // Small delay between downloads
-    await new Promise(r => setTimeout(r, 100));
-  }
 }
 
 // ==================== SEARCH ====================
@@ -2055,12 +1902,6 @@ window.clearAllChats = async function(btn) {
 
 window.exportAllData = exportAllData;
 
-// Mode toggle
-window.toggleMode = function() {
-  const newMode = toggleUserMode();
-  location.reload();
-};
-
 // Update mode toggle button
 function updateModeIndicator() {
   const mode = getUserMode();
@@ -2078,16 +1919,12 @@ function updateModeIndicator() {
       : '🔒 IndexedDB local storage';
   }
   
-  // Show/hide advanced features
-  const advancedElements = document.querySelectorAll('.advanced-only');
-  advancedElements.forEach(el => {
-    el.style.display = mode === MODES.ADVANCED ? 'block' : 'none';
-  });
-  
-  // Show/hide simple mode elements
-  const simpleElements = document.querySelectorAll('.simple-only');
-  simpleElements.forEach(el => {
-    el.style.display = mode === MODES.SIMPLE ? 'block' : 'none';
+  // Show/hide advanced features - CSS handles this via body[data-mode]
+  // Only handle special cases like filterPanel
+  document.querySelectorAll('.advanced-only').forEach(el => {
+    if (el.id !== 'filterPanel') {
+      el.style.display = ''; // Clear inline styles, let CSS handle it
+    }
   });
 }
 

@@ -5,22 +5,17 @@
 
 <body>
 
-  <div id="bulkControls" style="display: none;" class="bulk-controls">
-    <button id="bulkDelete" class="bulk-delete delete-button">🗑️</button>
-    <button id="bulkExport" class="bulk-export export-button">📤</button>
-    <button id="bulkPinToggle" class="bulk-pin pin-button">📌</button>
-  </div>
-  
-  <button id="toggleBulk" class="toggle-bulk pencil-button advanced-only" style="display: none;">✏️</button>
-  
   <aside id="sidebar" class="sidebar">
     <!-- Sidebar Header -->
     <div class="sidebar-header">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
         <h2 style="margin: 0; font-size: 1.5rem;">ChatLog</h2>
-        <button id="modeToggle" onclick="toggleMode()" style="background: var(--accent); border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; color: var(--fg); font-weight: 600;">
-          Simple
-        </button>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="modeToggle" onclick="toggleMode()" style="background: var(--accent); border: none; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; cursor: pointer; color: var(--fg); font-weight: 600;">
+            Simple
+          </button>
+          <button class="mobile-only sidebar-close-btn" onclick="closeMobileSidebar()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 4px;">✕</button>
+        </div>
       </div>
       <p id="storageInfo" style="font-size: 0.75rem; color: #888; margin: 0 0 1rem 0;">🔒 Stored securely on your device</p>
       
@@ -132,7 +127,7 @@
     
     <!-- Sidebar Footer -->
     <div class="sidebar-footer">
-      <button class="toggle-bulk bulk-btn advanced-only" style="display: none; width: 100%; margin-bottom: 0.5rem;">✏️ Select Chats</button>
+      
       <button id="toggleFolderView" title="Toggle Folder View" class="advanced-only" style="display: none; background: none; border: none; color: #888; font-size: 0.85em; cursor: pointer; width: 100%; text-align: left;">
         📁 Toggle Folder View
       </button>
@@ -141,6 +136,13 @@
 
   <main>
     <h1 style="display: none;">ChatLog</h1>
+
+    <!-- Top Toolbar - Stats/AI/Sync on right -->
+    <div class="top-toolbar" style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 1rem; padding: 0.5rem 0;">
+      <button onclick="showStats()" class="toolbar-btn desktop-only" title="View statistics">📊 Stats</button>
+      <button onclick="showAISettings()" class="toolbar-btn desktop-only" title="AI features">🤖 AI</button>
+      <button onclick="showSyncSettings()" class="toolbar-btn desktop-only" title="Cloud sync settings">☁️ Sync</button>
+    </div>
 
     <div class="intro-box">
       <p style="font-size: 1.1em; margin-bottom: 0.5rem;"><strong>Your AI conversations, organized.</strong></p>
@@ -170,20 +172,6 @@
       </label>
       <button onclick="clearAllChats(this)" class="delete-btn">🗑️ Delete All</button>
       <button onclick="exportAllData()" class="export-btn" title="Backup all data">💾 Backup</button>
-    </div>
-    
-    <!-- Tools - Secondary Actions -->
-    <div class="upload-controls secondary-actions">
-      <button onclick="showStats()" class="stats-btn desktop-only" title="View statistics">📊 Stats</button>
-      <button onclick="showAISettings()" class="ai-btn desktop-only" title="AI features">🤖 AI</button>
-      <button onclick="showSyncSettings()" class="sync-btn desktop-only" title="Cloud sync settings">☁️ Sync</button>
-    </div>
-      
-      <div id="bulkControls" style="display: none;" class="bulk-controls ">
-        <button class="bulk-delete delete-btn">🗑️ Delete Selected</button>
-        <button class="bulk-export export-btn">📤 Export to .Md</button>
-        <button class="bulk-pin pin-btn">📌 Pin/Unpin</button>
-      </div>
     </div>
 
     <section id="chatContainer" class="chat-container"></section>

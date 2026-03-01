@@ -1,7 +1,7 @@
 // Service Worker for ChatLog PWA
 // Cache-first strategy for assets, network-first for data
 
-const CACHE_NAME = 'chatlog-v1';
+const CACHE_NAME = 'chatlog-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -9,6 +9,8 @@ const STATIC_ASSETS = [
   '/assets/js/app.js',
   '/assets/js/storage.js',
   '/assets/js/parser.js',
+  '/assets/js/mobile-nav.js',
+  '/assets/js/user-mode.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
   'https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js'
 ];
