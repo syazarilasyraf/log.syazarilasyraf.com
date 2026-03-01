@@ -21,8 +21,102 @@
       <span aria-label="Toggle Folder View" style="display: inline-block; line-height: 1;">📁</span>
     </button> 
     <div id="searchContainer">
-      <input type="text" id="chatSearch" placeholder="🔍 Search chats..." />
+      <div style="display: flex; gap: 0.5rem;">
+        <input type="text" id="chatSearch" placeholder="🔍 Search chats..." style="flex: 1;" />
+        <button id="filterToggle" onclick="toggleFilterPanel()" title="Advanced filters" style="background: var(--bg); border: 1px solid var(--border); color: var(--fg); padding: 0.5rem; border-radius: 4px; cursor: pointer;">
+          ⚙️
+        </button>
+      </div>
+      <div id="activeFilters" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: var(--bg); border-radius: 4px; font-size: 0.85em; color: #888;"></div>
       <div id="searchResults"></div>
+    </div>
+    
+    <!-- Filter Panel -->
+    <div id="filterPanel" style="display: none; padding: 1rem; background: var(--bg-light); border-bottom: 1px solid var(--border); max-height: 400px; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h4 style="margin: 0; color: var(--link);">Advanced Filters</h4>
+        <button onclick="clearAllFilters()" style="background: none; border: none; color: #ff6666; cursor: pointer; font-size: 0.85em;">Clear all</button>
+      </div>
+      
+      <!-- Date Filter -->
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Date Range</label>
+        <select id="filterDate" onchange="onFilterChange()" style="width: 100%; padding: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="last7">Last 7 Days</option>
+          <option value="last30">Last 30 Days</option>
+          <option value="thisMonth">This Month</option>
+          <option value="lastMonth">Last Month</option>
+          <option value="custom">Custom Range...</option>
+        </select>
+        <div id="filterCustomDate" style="display: none; margin-top: 0.5rem; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <input type="date" id="filterStartDate" onchange="onFilterChange()" style="width: 100%; padding: 0.4rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85em;">
+          <input type="date" id="filterEndDate" onchange="onFilterChange()" style="width: 100%; padding: 0.4rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85em;">
+        </div>
+      </div>
+      
+      <!-- Message Count -->
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Message Count</label>
+        <select id="filterMessages" onchange="onFilterChange()" style="width: 100%; padding: 0.5rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px;">
+          <option value="any">Any</option>
+          <option value="short">Short (1-10 messages)</option>
+          <option value="medium">Medium (11-50 messages)</option>
+          <option value="long">Long (51+ messages)</option>
+        </select>
+      </div>
+      
+      <!-- Tags Filter -->
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Tags</label>
+        <div id="filterTags" style="display: flex; flex-wrap: wrap; gap: 0.25rem; max-height: 100px; overflow-y: auto;">
+          <!-- Tags populated by JS -->
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.8em; color: #888;">
+          <label style="margin-right: 1rem;">
+            <input type="radio" name="tagMode" value="any" checked onchange="onFilterChange()"> Match any
+          </label>
+          <label>
+            <input type="radio" name="tagMode" value="all" onchange="onFilterChange()"> Match all
+          </label>
+        </div>
+      </div>
+      
+      <!-- Content Type -->
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Content Type</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="filterHasCode" onchange="onFilterChange()">
+            <span style="font-size: 0.9em;">Has code</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="filterHasLinks" onchange="onFilterChange()">
+            <span style="font-size: 0.9em;">Has links</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="filterHasImages" onchange="onFilterChange()">
+            <span style="font-size: 0.9em;">Has images</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Search In -->
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; color: #888; font-size: 0.85em; margin-bottom: 0.25rem;">Search In</label>
+        <div style="display: flex; gap: 1rem;">
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="searchInTitle" checked onchange="onFilterChange()">
+            <span style="font-size: 0.9em;">Titles</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="searchInContent" checked onchange="onFilterChange()">
+            <span style="font-size: 0.9em;">Content</span>
+          </label>
+        </div>
+      </div>
     </div>
     <div id="chatList"></div>
   </aside>

@@ -56,6 +56,15 @@ import {
   copySummaryToClipboard as copyFlexSummary,
   estimateCost as estimateSummaryCost
 } from './summarizer.js';
+import {
+  getFilterState,
+  saveFilterState,
+  resetFilters,
+  applyFilters,
+  getAvailableTags,
+  getFilterDescription,
+  DEFAULT_FILTERS
+} from './search-filters.js';
 
 // ==================== STATE ====================
 let bulkEditMode = false;
@@ -849,32 +858,131 @@ export function resetSearchIndex() {
 }
 
 async function performSearch(query) {
-  const fuse = await getFuseInstance();
-  const results = fuse.search(query);
+  // Apply filters first
+  const chats = await getStoredChats();
+  const { results: filteredChats, activeFilters } = await applyFilters(chats, currentFilters, query);
   
-  // Split by match type for UI
-  const byTitle = [];
-  const byContent = [];
+  // If we have filters but no text query, show filtered results directly
+  if (activeFilters.length > 0 && !query.trim()) {
+    renderFilteredResults(filteredChats, activeFilters);
+    return;
+  }
+  
+  // For text search, use Fuse on filtered results
+  if (query.trim()) {
+    // Build temporary fuse instance from filtered results
+    const fuseData = filteredChats.map((chat, index) => ({
+      index: chats.findIndex(c => c.id === chat.id), // Get original index
+      title: chat.title || '',
+      content: chat.messages?.map(m => m.content).join(' ') || '',
+      chat
+    }));
 
-  results.forEach(result => {
-    const match = result.matches?.[0];
-    if (match?.key === 'title') {
-      byTitle.push({ 
-        chat: result.item.chat, 
-        index: result.item.index,
-        matches: result.matches 
-      });
-    } else {
-      byContent.push({ 
-        chat: result.item.chat, 
-        index: result.item.index, 
-        query,
-        matches: result.matches 
-      });
-    }
+    const tempFuse = new Fuse(fuseData, {
+      keys: [
+        { name: 'title', weight: 0.6 },
+        { name: 'content', weight: 0.4 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      includeMatches: true
+    });
+
+    const results = tempFuse.search(query);
+    
+    const byTitle = [];
+    const byContent = [];
+
+    results.forEach(result => {
+      const match = result.matches?.[0];
+      if (match?.key === 'title') {
+        byTitle.push({ 
+          chat: result.item.chat, 
+          index: result.item.index,
+          matches: result.matches 
+        });
+      } else {
+        byContent.push({ 
+          chat: result.item.chat, 
+          index: result.item.index, 
+          query,
+          matches: result.matches 
+        });
+      }
+    });
+
+    renderSearchResults(byTitle, byContent, query, activeFilters);
+  } else {
+    // No query, no filters - clear results
+    const resultsContainer = elements.searchResults();
+    if (resultsContainer) resultsContainer.innerHTML = '';
+  }
+}
+
+function renderFilteredResults(chats, activeFilters) {
+  const container = elements.searchResults();
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  if (chats.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 1rem; color: #888;">
+        <p>No conversations match your filters.</p>
+        <p style="font-size: 0.85em; margin-top: 0.5rem;">
+          Active: ${activeFilters.join(', ')}
+        </p>
+      </div>
+    `;
+    return;
+  }
+  
+  const header = document.createElement('div');
+  header.style.cssText = 'padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); color: #888; font-size: 0.9em;';
+  header.innerHTML = `
+    <strong>${chats.length} result${chats.length !== 1 ? 's' : ''}</strong>
+    <span style="margin-left: 0.5rem; font-size: 0.85em;">(${activeFilters.join(', ')})</span>
+  `;
+  container.appendChild(header);
+  
+  chats.forEach((chat, displayIndex) => {
+    // Find original index
+    getStoredChats().then(allChats => {
+      const originalIndex = allChats.findIndex(c => c.id === chat.id);
+      const div = createSearchResultItem({ chat, index: originalIndex });
+      container.appendChild(div);
+    });
   });
+}
 
-  renderSearchResults(byTitle, byContent, query);
+function createSearchResultItem({ chat, index }) {
+  const div = document.createElement('div');
+  div.className = 'search-result';
+  div.style.cssText = 'padding: 0.75rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border);';
+  
+  const title = document.createElement('div');
+  title.className = 'result-title';
+  title.style.cssText = 'font-weight: 500; margin-bottom: 0.25rem;';
+  title.textContent = chat.title || `Chat ${index + 1}`;
+  div.appendChild(title);
+  
+  const meta = document.createElement('div');
+  meta.style.cssText = 'font-size: 0.85em; color: #888;';
+  const date = new Date(chat.createdAt).toLocaleDateString();
+  const msgCount = chat.messages?.length || 0;
+  meta.textContent = `${date} · ${msgCount} messages`;
+  div.appendChild(meta);
+  
+  div.addEventListener('click', () => {
+    selectChat(index);
+    const searchInput = elements.searchInput();
+    if (searchInput) searchInput.value = '';
+    const resultsContainer = elements.searchResults();
+    if (resultsContainer) resultsContainer.innerHTML = '';
+    closeSearch();
+  });
+  
+  return div;
 }
 
 function highlightMatches(text, matches, key) {
@@ -899,14 +1007,36 @@ function highlightMatches(text, matches, key) {
   return result;
 }
 
-function renderSearchResults(byTitle, byContent, query) {
+function renderSearchResults(byTitle, byContent, query, activeFilters = []) {
   const container = elements.searchResults();
   container.innerHTML = '';
 
   if (byTitle.length === 0 && byContent.length === 0) {
-    container.innerHTML = '<p style="padding: 1rem;">No results found.</p>';
+    const filterInfo = activeFilters.length > 0 
+      ? `<p style="font-size: 0.85em; margin-top: 0.5rem; color: #888;">Active filters: ${activeFilters.join(', ')}</p>`
+      : '';
+    container.innerHTML = `
+      <div style="padding: 1rem;">
+        <p>No results found.</p>
+        ${filterInfo}
+      </div>
+    `;
     return;
   }
+
+  // Show filter info header
+  if (activeFilters.length > 0) {
+    const filterHeader = document.createElement('div');
+    filterHeader.style.cssText = 'padding: 0.5rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 0.85em; color: #888;';
+    filterHeader.innerHTML = `Filters: ${activeFilters.join(', ')}`;
+    container.appendChild(filterHeader);
+  }
+
+  const totalResults = byTitle.length + byContent.length;
+  const resultsHeader = document.createElement('div');
+  resultsHeader.style.cssText = 'padding: 0.5rem 1rem; border-bottom: 1px solid var(--border);';
+  resultsHeader.innerHTML = `<strong>${totalResults} result${totalResults !== 1 ? 's' : ''}</strong>`;
+  container.appendChild(resultsHeader);
 
   const createResult = ({ chat, index, matches }) => {
     const div = document.createElement('div');
@@ -1398,6 +1528,133 @@ window.copySingleSummary = async function() {
     alert('Copied to clipboard!');
   }
 };
+
+// ==================== ADVANCED SEARCH FILTERS ====================
+let currentFilters = getFilterState();
+let filterPanelOpen = false;
+
+window.toggleFilterPanel = async function() {
+  const panel = document.getElementById('filterPanel');
+  filterPanelOpen = !filterPanelOpen;
+  panel.style.display = filterPanelOpen ? 'block' : 'none';
+  
+  if (filterPanelOpen) {
+    // Populate tags
+    await populateFilterTags();
+    // Load current filter values
+    loadFilterValues();
+  }
+};
+
+async function populateFilterTags() {
+  const tags = await getAvailableTags();
+  const container = document.getElementById('filterTags');
+  if (!container) return;
+  
+  if (tags.length === 0) {
+    container.innerHTML = '<span style="color: #666; font-size: 0.85em;">No tags available</span>';
+    return;
+  }
+  
+  container.innerHTML = tags.map(tag => `
+    <label class="filter-tag-chip" style="display: inline-flex; align-items: center; gap: 0.25rem; padding: 2px 8px; background: var(--accent); border-radius: 12px; font-size: 0.8em; cursor: pointer; user-select: none;">
+      <input type="checkbox" value="${escapeHtml(tag)}" onchange="onFilterChange()" ${currentFilters.tags.includes(tag) ? 'checked' : ''}>
+      <span>${escapeHtml(tag)}</span>
+    </label>
+  `).join('');
+}
+
+function loadFilterValues() {
+  document.getElementById('filterDate').value = currentFilters.datePreset;
+  document.getElementById('filterMessages').value = currentFilters.messageRange;
+  document.getElementById('filterHasCode').checked = currentFilters.hasCode;
+  document.getElementById('filterHasLinks').checked = currentFilters.hasLinks;
+  document.getElementById('filterHasImages').checked = currentFilters.hasImages;
+  document.getElementById('searchInTitle').checked = currentFilters.searchIn.includes('title');
+  document.getElementById('searchInContent').checked = currentFilters.searchIn.includes('content');
+  
+  // Tag mode
+  const tagModeRadio = document.querySelector(`input[name="tagMode"][value="${currentFilters.tagMode}"]`);
+  if (tagModeRadio) tagModeRadio.checked = true;
+  
+  // Custom date
+  if (currentFilters.datePreset === 'custom') {
+    document.getElementById('filterCustomDate').style.display = 'grid';
+    if (currentFilters.customStartDate) {
+      document.getElementById('filterStartDate').value = currentFilters.customStartDate;
+    }
+    if (currentFilters.customEndDate) {
+      document.getElementById('filterEndDate').value = currentFilters.customEndDate;
+    }
+  }
+}
+
+window.onFilterChange = function() {
+  const datePreset = document.getElementById('filterDate').value;
+  
+  // Show/hide custom date range
+  const customDateDiv = document.getElementById('filterCustomDate');
+  if (customDateDiv) {
+    customDateDiv.style.display = datePreset === 'custom' ? 'grid' : 'none';
+  }
+  
+  // Collect selected tags
+  const selectedTags = Array.from(document.querySelectorAll('#filterTags input:checked'))
+    .map(cb => cb.value);
+  
+  // Get tag mode
+  const tagMode = document.querySelector('input[name="tagMode"]:checked')?.value || 'any';
+  
+  // Update filters
+  currentFilters = {
+    datePreset,
+    customStartDate: document.getElementById('filterStartDate')?.value || null,
+    customEndDate: document.getElementById('filterEndDate')?.value || null,
+    messageRange: document.getElementById('filterMessages').value,
+    tags: selectedTags,
+    tagMode,
+    hasCode: document.getElementById('filterHasCode').checked,
+    hasLinks: document.getElementById('filterHasLinks').checked,
+    hasImages: document.getElementById('filterHasImages').checked,
+    searchIn: [
+      document.getElementById('searchInTitle').checked ? 'title' : null,
+      document.getElementById('searchInContent').checked ? 'content' : null
+    ].filter(Boolean)
+  };
+  
+  saveFilterState(currentFilters);
+  updateActiveFiltersDisplay();
+  
+  // Trigger search with new filters
+  const searchInput = elements.searchInput();
+  if (searchInput) {
+    performSearch(searchInput.value);
+  }
+};
+
+window.clearAllFilters = function() {
+  currentFilters = resetFilters();
+  loadFilterValues();
+  updateActiveFiltersDisplay();
+  
+  const searchInput = elements.searchInput();
+  if (searchInput) {
+    performSearch(searchInput.value);
+  }
+};
+
+function updateActiveFiltersDisplay() {
+  const display = document.getElementById('activeFilters');
+  if (!display) return;
+  
+  const description = getFilterDescription(currentFilters);
+  const hasActiveFilters = description !== 'No filters active';
+  
+  display.style.display = hasActiveFilters ? 'block' : 'none';
+  display.innerHTML = hasActiveFilters 
+    ? `<strong>Active filters:</strong> ${description} <button onclick="clearAllFilters()" style="background: none; border: none; color: #ff6666; cursor: pointer; margin-left: 0.5rem;">✕</button>`
+    : '';
+}
 
 window.autoTagChat = async function(chatIndex) {
   const chats = await getStoredChats();

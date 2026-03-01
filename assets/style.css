@@ -835,6 +835,17 @@
       padding: 1rem 0;
     }
 
+    /* Search Filters */
+    .filter-tag-chip input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .filter-tag-chip:has(input:checked) {
+      background: var(--link) !important;
+      color: #000;
+    }
+
     /* Cloud Sync */
     .sync-btn {
       background: transparent;
