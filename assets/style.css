@@ -122,6 +122,24 @@
       box-sizing: border-box;
       background-color: var(--bg);
     }
+    
+    /* Intro box styling */
+    .intro-box {
+      background: var(--bg-light);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border);
+    }
+    
+    .intro-box details summary {
+      font-weight: 500;
+      color: var(--link);
+    }
+    
+    .intro-box details[open] summary {
+      margin-bottom: 0.75rem;
+    }
 
     h1 {
       margin-top: 0;
@@ -1363,6 +1381,24 @@
     
     body[data-mode="advanced"] .simple-only {
       display: none !important;
+    }
+    
+    /* Scrollbar styling for sidebar */
+    .sidebar-content::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .sidebar-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .sidebar-content::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    
+    .sidebar-content::-webkit-scrollbar-thumb:hover {
+      background: var(--fg-muted);
     }
     
     /* Primary vs Secondary Actions */
