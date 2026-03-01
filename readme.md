@@ -26,7 +26,7 @@ ChatLog fills this gap with a zero-compromise approach to privacy and user contr
 - 🎨 **Beautiful Cards**: Browse conversations in a modern, visual layout
 - 🔍 **Smart Search**: Find any conversation instantly, even with typos
 - 🏷️ **Auto-Organization**: AI suggests tags, or organize manually
-- 📱 **Works Everywhere**: Web app + browser extension, works offline
+- 📱 **Works Everywhere**: Web app + browser extension, fully responsive, works offline
 
 ### Core
 - 📁 **Universal Import** — Bring conversations from ChatGPT, or auto-save with our extension
@@ -125,9 +125,17 @@ Generate AI summaries for any time period:
 
 All with customizable prompts and cost estimates before generating.
 
+### Mobile-First Design
+ChatLog is designed for mobile as much as desktop:
+- **Bottom navigation** — Thumb-friendly tab bar (Browse, Search, Actions)
+- **Swipe gestures** — Swipe sidebar to close, swipe cards to navigate
+- **Touch-optimized** — Cards are 80px minimum for easy tapping
+- **Native feel** — Action sheets, full-screen search, smooth animations
+- **Responsive** — Sidebar becomes slide-over, filters adapt to screen
+
 ### Smart Organization
 - **Time-based grouping** — Today, Yesterday, Last 7/30 Days, Months, Years
-- **Folder view** — VS Code-style collapsible folders
+- **Folder view** — VS Code-style collapsible folders (desktop)
 - **Pinning** — Keep important chats at top
 - **Bulk operations** — Select, delete, export multiple chats
 - **Virtual scrolling** — Smooth performance with 1000+ message chats
