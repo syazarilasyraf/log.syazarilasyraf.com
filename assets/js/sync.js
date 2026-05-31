@@ -231,7 +231,16 @@ CREATE TABLE chat_sync (
 -- Enable RLS
 ALTER TABLE chat_sync ENABLE ROW LEVEL SECURITY;
 
--- Create policy for anonymous access (for MVP)
+-- WARNING: The policy below allows ANYONE to read/write ANY row.
+-- This is only acceptable for local development/testing.
+-- For production, use authenticated users with proper RLS:
+--
+-- CREATE POLICY "Users can only access their own device data"
+--   ON chat_sync FOR ALL
+--   USING (auth.uid() = user_id)
+--   WITH CHECK (auth.uid() = user_id);
+--
+-- MVP / Development only (NOT SECURE FOR PRODUCTION):
 CREATE POLICY "Allow anonymous access" ON chat_sync
   FOR ALL USING (true) WITH CHECK (true);
 
