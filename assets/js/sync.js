@@ -185,7 +185,7 @@ export async function autoSync() {
   const lastSync = localStorage.getItem('last_sync');
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   
-  if (!lastSync || lastSync < fiveMinutesAgo) {
+  if (!lastSync || new Date(lastSync) < new Date(fiveMinutesAgo)) {
     return await syncToCloud();
   }
 }
