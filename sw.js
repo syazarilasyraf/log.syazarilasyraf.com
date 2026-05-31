@@ -1,7 +1,7 @@
 // Service Worker for ChatLog PWA
 // Cache-first strategy for assets, network-first for data
 
-const CACHE_NAME = 'chatlog-v8';
+const CACHE_NAME = 'chatlog-v9';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -11,8 +11,18 @@ const STATIC_ASSETS = [
   '/assets/js/parser.js',
   '/assets/js/mobile-nav.js',
   '/assets/js/user-mode.js',
+  '/assets/js/cards.js',
+  '/assets/js/tags.js',
+  '/assets/js/search-filters.js',
+  '/assets/js/stats.js',
+  '/assets/js/ai.js',
+  '/assets/js/sync.js',
+  '/assets/js/summarizer.js',
+  '/assets/js/animations.js',
+  '/assets/js/virtual-list.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-  'https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js'
+  'https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 
 // Install: Cache static assets
