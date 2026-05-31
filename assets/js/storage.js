@@ -254,6 +254,51 @@ async function exportAllData() {
   URL.revokeObjectURL(url);
 }
 
+// Validate backup data structure
+function validateBackup(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid backup: expected an object');
+  }
+  
+  if (!data.version || typeof data.version !== 'number') {
+    throw new Error('Invalid backup: missing or invalid version');
+  }
+  
+  if (data.chats !== undefined) {
+    if (!Array.isArray(data.chats)) {
+      throw new Error('Invalid backup: chats must be an array');
+    }
+    for (const chat of data.chats) {
+      if (!chat || typeof chat !== 'object') {
+        throw new Error('Invalid backup: each chat must be an object');
+      }
+      if (typeof chat.id !== 'string') {
+        throw new Error('Invalid backup: each chat must have a string id');
+      }
+      if (!Array.isArray(chat.messages)) {
+        throw new Error(`Invalid backup: chat "${chat.id}" must have a messages array`);
+      }
+    }
+  }
+  
+  if (data.pinnedIndices !== undefined && !Array.isArray(data.pinnedIndices)) {
+    throw new Error('Invalid backup: pinnedIndices must be an array');
+  }
+  
+  if (data.tags !== undefined) {
+    if (typeof data.tags !== 'object' || Array.isArray(data.tags)) {
+      throw new Error('Invalid backup: tags must be an object');
+    }
+    for (const [key, value] of Object.entries(data.tags)) {
+      if (!Array.isArray(value) || !value.every(t => typeof t === 'string')) {
+        throw new Error(`Invalid backup: tags["${key}"] must be an array of strings`);
+      }
+    }
+  }
+  
+  return true;
+}
+
 // Import data from a backup file
 async function importFromBackup(file) {
   return new Promise((resolve, reject) => {
@@ -261,6 +306,9 @@ async function importFromBackup(file) {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
+        
+        // Validate structure before writing anything to IndexedDB
+        validateBackup(data);
         
         if (data.chats && Array.isArray(data.chats)) {
           await saveChatsToDB(data.chats);
@@ -276,7 +324,7 @@ async function importFromBackup(file) {
         
         resolve(data.chats ? data.chats.length : 0);
       } catch (error) {
-        reject(new Error('Invalid backup file format'));
+        reject(new Error(error.message || 'Invalid backup file format'));
       }
     };
     reader.onerror = () => reject(reader.error);
