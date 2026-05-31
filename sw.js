@@ -82,18 +82,29 @@ async function cacheFirst(request) {
     // Return cached but also fetch update in background
     fetch(request)
       .then(response => {
-        if (response.ok) cache.put(request, response);
+        // Only cache valid responses with correct content type
+        if (response.ok && response.status === 200) {
+          cache.put(request, response.clone());
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Background update failed, cached version is still valid
+      });
     return cached;
   }
   
   // Not in cache, fetch and store
-  const response = await fetch(request);
-  if (response.ok) {
-    cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (response.ok && response.status === 200) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    // Network failed and nothing in cache
+    console.error('[SW] Fetch failed:', error);
+    return new Response('Network error', { status: 408, statusText: 'Network Error' });
   }
-  return response;
 }
 
 async function networkFirst(request) {
