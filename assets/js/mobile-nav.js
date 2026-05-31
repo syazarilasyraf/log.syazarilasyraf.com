@@ -227,6 +227,9 @@ function showActionsView() {
         <div class="mobile-sheet-handle"></div>
       </div>
       <div class="mobile-sheet-content">
+        <button class="mobile-action-btn" onclick="showPrivacyAudit(); hideActionsOverlay();">
+          <span>🔒</span> Privacy Audit
+        </button>
         <button class="mobile-action-btn" onclick="showAISettings(); hideActionsOverlay();">
           <span>🤖</span> AI Features
         </button>
