@@ -442,10 +442,6 @@ async function renderChatList(filterTag = null) {
   });
 }
 
-function groupChatsByDate(chats, pinnedIndices) {
-  return groupChatsByDateWithTags(chats, chats.map((_, i) => i), pinnedIndices, {});
-}
-
 function groupChatsByDateWithTags(chats, originalIndices, pinnedIndices, allTags) {
   const now = new Date();
   const currentYear = now.getFullYear();
