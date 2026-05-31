@@ -2033,10 +2033,15 @@ function updateModeIndicator() {
 
 // ==================== UTILITIES ====================
 function escapeHtml(text) {
-  if (!text) return '';
+  if (text == null) return '';
+  const str = String(text);
   const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  div.textContent = str;
+  let result = div.innerHTML;
+  // Also escape single quotes, backticks, and forward slashes
+  // to prevent attribute injection in various contexts
+  result = result.replace(/'/g, '&#39;').replace(/`/g, '&#96;').replace(/\//g, '&#47;');
+  return result;
 }
 
 // ==================== PWA SERVICE WORKER ====================
