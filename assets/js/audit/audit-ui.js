@@ -1,6 +1,6 @@
 // audit-ui.js - HTML generation for privacy audit dashboard
 
-import { escapeHtml } from '../app.js';
+import { escapeHtml } from '../utils.js';
 import { calculateRiskScore, summarizeBySeverity } from './risk-score.js';
 
 const SEVERITY_ICONS = {

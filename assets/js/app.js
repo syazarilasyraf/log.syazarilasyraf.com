@@ -25,6 +25,7 @@ import {
 import { calculateStats, formatStatsHTML } from './stats.js';
 import { runAudit, getCachedFindings, clearAndRescan, getCurrentFindings, cancelAudit } from './audit/index.js';
 import { formatAuditHTML, exportFindingsAsJSON } from './audit/audit-ui.js';
+import { escapeHtml } from './utils.js';
 import { 
   isSyncConfigured, 
   configureSync, 
@@ -2059,6 +2060,10 @@ window.exportAuditResults = function() {
   URL.revokeObjectURL(url);
 };
 
+window.cancelAudit = function() {
+  cancelAudit();
+};
+
 window.clearAuditAndRescan = async function() {
   await clearAndRescan();
   window.showPrivacyAudit();
@@ -2113,19 +2118,6 @@ function updateModeIndicator() {
       el.style.display = ''; // Clear inline styles, let CSS handle it
     }
   });
-}
-
-// ==================== UTILITIES ====================
-function escapeHtml(text) {
-  if (text == null) return '';
-  const str = String(text);
-  const div = document.createElement('div');
-  div.textContent = str;
-  let result = div.innerHTML;
-  // Also escape single quotes, backticks, and forward slashes
-  // to prevent attribute injection in various contexts
-  result = result.replace(/'/g, '&#39;').replace(/`/g, '&#96;').replace(/\//g, '&#47;');
-  return result;
 }
 
 // Sanitize HTML to prevent XSS from malicious chat content
