@@ -65,7 +65,7 @@ export async function createConversationCard(chat, index, options = {}) {
   const messageCount = chat.messages?.length || 0;
   const preview = getMessagePreview(chat.messages);
   const timeAgo = formatRelativeTime(chat.createdAt);
-  const tags = showTags ? await getChatTags(index) : [];
+  const tags = showTags ? await getChatTags(chat.id) : [];
   
   // Check for content types
   const hasCode = chat.messages?.some(m => m.content?.includes('```'));

@@ -109,8 +109,8 @@ export async function applyFilters(chats, filters, textQuery = '') {
   if (filters.tags && filters.tags.length > 0) {
     const allTags = await getAllTags();
     
-    results = results.filter((chat, index) => {
-      const chatTags = allTags[index] || [];
+    results = results.filter((chat) => {
+      const chatTags = allTags[chat.id] || [];
       
       if (filters.tagMode === 'all') {
         // Must have ALL selected tags

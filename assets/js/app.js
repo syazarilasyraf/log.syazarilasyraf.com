@@ -7,6 +7,7 @@ import {
   getPinnedChats,
   savePinnedChats,
   migrateFromLocalStorage,
+  migrateTagsToChatIds,
   exportAllData,
   importFromBackup
 } from './storage.js';
@@ -19,8 +20,7 @@ import {
   addTag, 
   removeTag, 
   getUniqueTags, 
-  searchByTag,
-  updateTagIndices 
+  searchByTag
 } from './tags.js';
 import { calculateStats, formatStatsHTML } from './stats.js';
 import { 
@@ -126,6 +126,12 @@ async function init() {
   const migrated = await migrateFromLocalStorage();
   if (migrated) {
     console.log('Your conversations have been moved to secure local storage.');
+  }
+  
+  // Migrate tags from index-based to chat ID-based format
+  const chats = await getStoredChats();
+  if (chats.length > 0) {
+    await migrateTagsToChatIds(chats);
   }
   
   // Setup event listeners
@@ -387,9 +393,9 @@ async function renderChatList(filterTag = null) {
     // Get original indices for the filtered chats
     displayIndices = displayChats.map(c => chats.findIndex(orig => orig.id === c.id));
   } else if (filterTag) {
-    const taggedIndices = await searchByTag(filterTag);
-    displayChats = chats.filter((_, i) => taggedIndices.includes(i));
-    displayIndices = taggedIndices;
+    const taggedIds = await searchByTag(filterTag);
+    displayChats = chats.filter(c => taggedIds.includes(c.id));
+    displayIndices = displayChats.map(c => chats.findIndex(orig => orig.id === c.id));
   }
 
   // Add tag filter bar
@@ -464,7 +470,7 @@ function groupChatsByDateWithTags(chats, originalIndices, pinnedIndices, allTags
     const date = new Date(rawDate);
     if (isNaN(date)) return;
 
-    const entry = createChatEntryElement(chat, originalIndex, allTags[originalIndex] || []);
+    const entry = createChatEntryElement(chat, originalIndex, allTags[chat.id] || []);
 
     if (pinnedIndices.has(originalIndex)) {
       sections.pinned.push(entry);
@@ -650,10 +656,10 @@ async function displayChat(index) {
   };
 
   // Build metadata section (always static)
-  container.innerHTML = await buildMetadataHTML(metadata, index);
+  container.innerHTML = await buildMetadataHTML(metadata, chat.id, index);
   
   // Attach tag handlers
-  attachTagHandlers(container, index);
+  attachTagHandlers(container, chat.id, index);
 
   // Messages section
   if (!chat.messages || chat.messages.length === 0) {
@@ -670,7 +676,7 @@ async function displayChat(index) {
   }
 }
 
-function attachTagHandlers(container, chatIndex) {
+function attachTagHandlers(container, chatId, chatIndex) {
   const tagEditor = container.querySelector('.tag-editor');
   if (!tagEditor) return;
   
@@ -679,7 +685,7 @@ function attachTagHandlers(container, chatIndex) {
     tagEl.addEventListener('click', async () => {
       const tag = tagEl.dataset.tag;
       if (confirm(`Remove tag "${tag}"?`)) {
-        await removeTag(chatIndex, tag);
+        await removeTag(chatId, tag);
         await displayChat(chatIndex);
         await renderChatList(); // Update sidebar
       }
@@ -693,7 +699,7 @@ function attachTagHandlers(container, chatIndex) {
       if (e.key === 'Enter') {
         const tag = input.value.trim();
         if (tag) {
-          await addTag(chatIndex, tag);
+          await addTag(chatId, tag);
           input.value = '';
           await displayChat(chatIndex);
           await renderChatList(); // Update sidebar
@@ -710,10 +716,10 @@ function attachTagHandlers(container, chatIndex) {
   }
 }
 
-async function buildMetadataHTML(metadata, chatIndex) {
+async function buildMetadataHTML(metadata, chatId, chatIndex) {
   const link = `https://chat.openai.com/c/${metadata.id}`;
   const created = new Date(metadata.createdAt).toLocaleString();
-  const tags = await getChatTags(chatIndex);
+  const tags = await getChatTags(chatId);
   const aiEnabled = hasApiKey();
 
   return `
@@ -728,7 +734,7 @@ async function buildMetadataHTML(metadata, chatIndex) {
       <button id="summarizeBtn" onclick="summarizeCurrentChat(${chatIndex})" class="ai-tag-btn" style="margin-right: 0.5rem;">
         📝 Summarize
       </button>
-      <button id="autoTagBtn" onclick="autoTagChat(${chatIndex})" class="ai-tag-btn">
+      <button id="autoTagBtn" onclick="autoTagChat('${chatId}')" class="ai-tag-btn">
         🏷️ Auto-Tag
       </button>
     </div>
@@ -1725,12 +1731,13 @@ function updateActiveFiltersDisplay() {
     : '';
 }
 
-window.autoTagChat = async function(chatIndex) {
+window.autoTagChat = async function(chatId) {
   const chats = await getStoredChats();
+  const chatIndex = chats.findIndex(c => c.id === chatId);
   const chat = chats[chatIndex];
   if (!chat) return;
   
-  const existingTags = await getChatTags(chatIndex);
+  const existingTags = await getChatTags(chatId);
   
   // Show cost confirmation in simple mode
   const mode = getUserMode();
@@ -1755,7 +1762,7 @@ window.autoTagChat = async function(chatIndex) {
     
     // Add tags one by one
     for (const tag of newTags) {
-      await addTag(chatIndex, tag);
+      await addTag(chatId, tag);
     }
     
     // Refresh display

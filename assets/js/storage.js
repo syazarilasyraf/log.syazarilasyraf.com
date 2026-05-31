@@ -78,10 +78,12 @@ async function clearChatsInDB() {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete('uploadedChats');
+    store.delete('uploadedChats');
+    store.delete('pinnedChats');
+    store.delete('chatTags');
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
   });
 }
 
@@ -167,16 +169,78 @@ async function migrateFromLocalStorage() {
   return migrated;
 }
 
+// Migrate tags from index-based (numeric keys) to chat ID-based format
+async function migrateTagsToChatIds(chats) {
+  const allTags = await getAllTags();
+  const keys = Object.keys(allTags);
+  
+  // Check if any key is a numeric index (old format)
+  const hasNumericKeys = keys.some(k => /^\d+$/.test(k));
+  if (!hasNumericKeys) return false;
+  
+  const newTags = {};
+  for (const [key, tags] of Object.entries(allTags)) {
+    const index = parseInt(key, 10);
+    if (!isNaN(index) && chats[index] && chats[index].id) {
+      newTags[chats[index].id] = tags;
+    }
+  }
+  
+  await saveAllTags(newTags);
+  console.log(`[Migration] Converted ${keys.length} index-based tags to chat ID format.`);
+  return true;
+}
+
+// Get all tags
+async function getAllTags() {
+  try {
+    const database = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get('chatTags');
+
+      request.onsuccess = () => {
+        resolve(request.result?.tags || {});
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch (error) {
+    console.error('Error getting tags from IndexedDB:', error);
+    return {};
+  }
+}
+
+// Save all tags
+async function saveAllTags(tags) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    const request = store.put({
+      id: 'chatTags',
+      tags: tags,
+      timestamp: new Date().toISOString()
+    });
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Export all data as a JSON file for backup
 async function exportAllData() {
   const chats = await getStoredChats();
   const pinned = await getPinnedChats();
+  const tags = await getAllTags();
   
   const exportData = {
     version: 1,
     exportedAt: new Date().toISOString(),
     chats: chats,
-    pinnedIndices: pinned
+    pinnedIndices: pinned,
+    tags: tags
   };
 
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -206,6 +270,10 @@ async function importFromBackup(file) {
           await savePinnedChats(data.pinnedIndices);
         }
         
+        if (data.tags && typeof data.tags === 'object') {
+          await saveAllTags(data.tags);
+        }
+        
         resolve(data.chats ? data.chats.length : 0);
       } catch (error) {
         reject(new Error('Invalid backup file format'));
@@ -223,7 +291,10 @@ export {
   clearChatsInDB,
   getPinnedChats,
   savePinnedChats,
+  getAllTags,
+  saveAllTags,
   migrateFromLocalStorage,
+  migrateTagsToChatIds,
   exportAllData,
   importFromBackup
 };

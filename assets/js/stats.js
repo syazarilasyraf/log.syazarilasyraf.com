@@ -102,7 +102,7 @@ export async function calculateStats() {
     });
 
     // Tag counting
-    const chatTags = allTags[index] || [];
+    const chatTags = allTags[chat.id] || [];
     stats.totalTags += chatTags.length;
     chatTags.forEach(tag => {
       tagCounts[tag] = (tagCounts[tag] || 0) + 1;
