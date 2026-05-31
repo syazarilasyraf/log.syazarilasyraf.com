@@ -99,6 +99,8 @@ import {
 
 // ==================== STATE ====================
 let folderViewEnabled = false;
+let lastAiRequestTime = 0;
+const AI_COOLDOWN_MS = 2000; // 2 second cooldown between AI requests
 
 // ==================== DOM ELEMENTS ====================
 const elements = {
@@ -1529,6 +1531,8 @@ window.resetSinglePrompt = function() {
 
 // Single chat summary from chat view
 window.summarizeCurrentChat = async function(chatIndex) {
+  if (!checkAiRateLimit()) return;
+  
   const chats = await getStoredChats();
   const chat = chats[chatIndex];
   
@@ -1726,7 +1730,20 @@ function updateActiveFiltersDisplay() {
     : '';
 }
 
+function checkAiRateLimit() {
+  const now = Date.now();
+  if (now - lastAiRequestTime < AI_COOLDOWN_MS) {
+    const wait = Math.ceil((AI_COOLDOWN_MS - (now - lastAiRequestTime)) / 1000);
+    alert(`Please wait ${wait} second${wait !== 1 ? 's' : ''} between AI requests.`);
+    return false;
+  }
+  lastAiRequestTime = now;
+  return true;
+}
+
 window.autoTagChat = async function(chatId) {
+  if (!checkAiRateLimit()) return;
+  
   const chats = await getStoredChats();
   const chatIndex = chats.findIndex(c => c.id === chatId);
   const chat = chats[chatIndex];
