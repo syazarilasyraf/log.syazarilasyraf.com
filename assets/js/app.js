@@ -99,7 +99,6 @@ import {
 
 // ==================== STATE ====================
 let folderViewEnabled = false;
-let confirmClearAll = false;
 
 // ==================== DOM ELEMENTS ====================
 const elements = {
@@ -1967,21 +1966,22 @@ window.showStats = async function() {
 window.clearAllChats = async function(btn) {
   const button = btn || document.querySelector('.delete-btn');
 
-  if (!confirmClearAll) {
+  // Use button-local state instead of global to prevent stale confirmation
+  if (button.dataset.confirming !== 'true') {
     button.textContent = 'Sure?';
     button.style.color = 'orange';
-    confirmClearAll = true;
+    button.dataset.confirming = 'true';
 
     setTimeout(() => {
       button.textContent = '🗑️ Delete All';
       button.style.color = '';
-      confirmClearAll = false;
+      delete button.dataset.confirming;
     }, 3000);
   } else {
     await clearChatsInDB();
     resetSearchIndex(); // Reset fuzzy search cache
     await renderChatList();
-    confirmClearAll = false;
+    delete button.dataset.confirming;
   }
 };
 
