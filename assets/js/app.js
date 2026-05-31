@@ -799,7 +799,7 @@ function createMessageElement(msg, index, chatIndex) {
   const contentDiv = document.createElement('div');
   contentDiv.className = 'message-content';
   contentDiv.style.padding = '0.5em';
-  contentDiv.innerHTML = marked.parse(content);
+  contentDiv.innerHTML = renderMarkdown(content);
 
   details.appendChild(summary);
   details.appendChild(contentDiv);
@@ -1460,7 +1460,7 @@ window.generateFlexibleSummary = async function() {
         </p>
         
         <div class="ai-section" style="white-space: pre-wrap;">
-          ${marked.parse(result.summary)}
+          ${renderMarkdown(result.summary)}
         </div>
         
         <div class="ai-section">
@@ -1567,7 +1567,7 @@ window.summarizeCurrentChat = async function(chatIndex) {
         </div>
         
         <div class="ai-section" style="white-space: pre-wrap; margin-bottom: 1rem;">
-          ${marked.parse(result.summary)}
+          ${renderMarkdown(result.summary)}
         </div>
         
         <div style="display: flex; gap: 1rem;">
@@ -2050,6 +2050,29 @@ function escapeHtml(text) {
   // to prevent attribute injection in various contexts
   result = result.replace(/'/g, '&#39;').replace(/`/g, '&#96;').replace(/\//g, '&#47;');
   return result;
+}
+
+// Sanitize HTML to prevent XSS from malicious chat content
+function sanitizeHtml(html) {
+  if (!html) return '';
+  return html
+    // Remove script tags and their contents
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    // Remove event handlers (onload, onerror, onclick, etc.)
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    // Remove javascript: URLs
+    .replace(/javascript:/gi, 'blocked:')
+    // Remove data: URLs that could execute scripts
+    .replace(/data:text\/html/gi, 'blocked:')
+    // Remove iframe and object/embed tags
+    .replace(/<(iframe|object|embed|form|input|button|meta|link|style)\b[^>]*>/gi, '');
+}
+
+// Render markdown with XSS sanitization
+function renderMarkdown(content) {
+  if (!content) return '';
+  const rawHtml = marked.parse(content);
+  return sanitizeHtml(rawHtml);
 }
 
 // ==================== PWA SERVICE WORKER ====================
