@@ -1,5 +1,7 @@
 // parser.js - ChatGPT conversation parsing
 
+let fallbackIdCounter = 0;
+
 /**
  * Detect the format of the imported data
  * @param {object} data - Parsed JSON data
@@ -55,7 +57,7 @@ function parseJSONChats(dataRaw) {
   // Handle ChatLog extension export (already in correct format)
   if (format === 'chatlog-extension') {
     return data.chats.map(conv => ({
-      id: conv.id || `chat-${Date.now()}`,
+      id: conv.id || `chat-${Date.now()}-${++fallbackIdCounter}`,
       title: conv.title || 'Untitled Chat',
       messages: (conv.messages || []).map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
@@ -70,7 +72,7 @@ function parseJSONChats(dataRaw) {
   // Handle ChatLog backup (has pinnedIndices too)
   if (format === 'chatlog-backup') {
     return data.chats.map(conv => ({
-      id: conv.id || `chat-${Date.now()}`,
+      id: conv.id || `chat-${Date.now()}-${++fallbackIdCounter}`,
       title: conv.title || 'Untitled Chat',
       messages: (conv.messages || []).map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
