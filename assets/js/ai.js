@@ -1,6 +1,8 @@
 // ai.js - OpenAI integration for auto-tagging and summarization
 // Users provide their own API key (BYOK - Bring Your Own Key)
 
+import { getSecureItem, setSecureItem, removeSecureItem } from './secure-storage.js';
+
 const API_KEY_STORAGE_KEY = 'openai_api_key';
 const TAG_PROMPT_KEY = 'ai_tag_prompt';
 const API_BASE_URL = 'https://api.openai.com/v1';
@@ -36,21 +38,21 @@ export function setTagPrompt(prompt) {
   localStorage.setItem(TAG_PROMPT_KEY, prompt);
 }
 
-// Store API key locally (user's browser only)
+// Store API key in sessionStorage (cleared when tab closes)
 export function setApiKey(key) {
   if (key && key.startsWith('sk-')) {
-    localStorage.setItem(API_KEY_STORAGE_KEY, key);
+    setSecureItem(API_KEY_STORAGE_KEY, key);
     return true;
   }
   return false;
 }
 
 export function getApiKey() {
-  return localStorage.getItem(API_KEY_STORAGE_KEY);
+  return getSecureItem(API_KEY_STORAGE_KEY);
 }
 
 export function clearApiKey() {
-  localStorage.removeItem(API_KEY_STORAGE_KEY);
+  removeSecureItem(API_KEY_STORAGE_KEY);
 }
 
 export function hasApiKey() {

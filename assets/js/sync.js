@@ -1,16 +1,29 @@
 // sync.js - Cloud synchronization using Supabase
 // Requires: supabase-js library
 
-// You'll need to create a free Supabase project and add your credentials here
-const SUPABASE_URL = localStorage.getItem('supabase_url') || '';
-const SUPABASE_KEY = localStorage.getItem('supabase_key') || '';
+import { getSecureItem, setSecureItem, removeSecureItem } from './secure-storage.js';
+
+const SUPABASE_URL_KEY = 'supabase_url';
+const SUPABASE_KEY_KEY = 'supabase_key';
 
 let supabase = null;
 let syncInProgress = false;
 
+// Read credentials from secure storage (sessionStorage with localStorage fallback)
+function getSupabaseUrl() {
+  return getSecureItem(SUPABASE_URL_KEY) || '';
+}
+
+function getSupabaseKey() {
+  return getSecureItem(SUPABASE_KEY_KEY) || '';
+}
+
 // Initialize Supabase client
 function initSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  
+  if (!url || !key) {
     console.log('[Sync] No Supabase credentials configured');
     return null;
   }
@@ -20,26 +33,26 @@ function initSupabase() {
     return null;
   }
   
-  return supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return supabaseJs.createClient(url, key);
 }
 
 // Check if sync is configured
 export function isSyncConfigured() {
-  return !!(SUPABASE_URL && SUPABASE_KEY);
+  return !!(getSupabaseUrl() && getSupabaseKey());
 }
 
 // Configure sync credentials
 export function configureSync(url, key) {
-  localStorage.setItem('supabase_url', url);
-  localStorage.setItem('supabase_key', key);
+  setSecureItem(SUPABASE_URL_KEY, url);
+  setSecureItem(SUPABASE_KEY_KEY, key);
   supabase = initSupabase();
   return !!supabase;
 }
 
 // Clear sync configuration
 export function clearSyncConfig() {
-  localStorage.removeItem('supabase_url');
-  localStorage.removeItem('supabase_key');
+  removeSecureItem(SUPABASE_URL_KEY);
+  removeSecureItem(SUPABASE_KEY_KEY);
   localStorage.removeItem('sync_device_id');
   supabase = null;
 }
