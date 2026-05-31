@@ -714,7 +714,7 @@ function attachTagHandlers(container, chatId, chatIndex) {
 }
 
 async function buildMetadataHTML(metadata, chatId, chatIndex) {
-  const link = `https://chat.openai.com/c/${metadata.id}`;
+  const link = `https://chat.openai.com/c/${encodeURIComponent(metadata.id)}`;
   const created = new Date(metadata.createdAt).toLocaleString();
   const tags = await getChatTags(chatId);
   const aiEnabled = hasApiKey();
