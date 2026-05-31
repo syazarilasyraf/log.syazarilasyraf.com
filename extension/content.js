@@ -3,6 +3,12 @@
 (function() {
   'use strict';
 
+  // Only run on ChatGPT domains to prevent data extraction from unrelated sites
+  const ALLOWED_HOSTS = ['chat.openai.com', 'chatgpt.com'];
+  if (!ALLOWED_HOSTS.some(host => window.location.hostname.endsWith(host))) {
+    return;
+  }
+
   console.log('[ChatLog] Content script loaded');
 
   // Configuration
