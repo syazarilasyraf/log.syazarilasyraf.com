@@ -126,6 +126,8 @@ export class VirtualList {
     this.detachEvents();
     this.itemsContainer.remove();
     this.spacer.remove();
+    this.visibleItems.clear();
+    this.items = [];
   }
 }
 
