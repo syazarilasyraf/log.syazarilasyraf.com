@@ -1063,13 +1063,21 @@ function highlightMatches(text, matches, key) {
   const match = matches.find(m => m.key === key);
   if (!match) return escapeHtml(text);
 
+  // Sort and merge overlapping indices
+  const sorted = [...match.indices].sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [start, end] of sorted) {
+    if (merged.length === 0 || start > merged[merged.length - 1][1]) {
+      merged.push([start, end]);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], end);
+    }
+  }
+  
   let result = '';
   let lastIndex = 0;
   
-  // Sort indices by start position
-  const indices = match.indices.sort((a, b) => a[0] - b[0]);
-  
-  indices.forEach(([start, end]) => {
+  merged.forEach(([start, end]) => {
     result += escapeHtml(text.slice(lastIndex, start));
     result += `<mark>${escapeHtml(text.slice(start, end + 1))}</mark>`;
     lastIndex = end + 1;
