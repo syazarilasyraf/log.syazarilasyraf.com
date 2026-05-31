@@ -23,6 +23,8 @@ import {
   searchByTag
 } from './tags.js';
 import { calculateStats, formatStatsHTML } from './stats.js';
+import { runAudit, getCachedFindings, clearAndRescan, getCurrentFindings, cancelAudit } from './audit/index.js';
+import { formatAuditHTML, exportFindingsAsJSON } from './audit/audit-ui.js';
 import { 
   isSyncConfigured, 
   configureSync, 
@@ -1986,6 +1988,80 @@ window.showStats = async function() {
       </div>
     `;
   }, 100);
+};
+
+window.showPrivacyAudit = async function() {
+  const container = elements.chatContainer();
+  if (!container) return;
+
+  // Save view state so Back button works
+  saveViewState();
+
+  // Try to show cached results first, then rescan in background
+  let findings = await getCachedFindings();
+  const hasCache = findings.length > 0;
+
+  if (hasCache) {
+    container.innerHTML = formatAuditHTML(findings);
+  } else {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 3rem;">
+        <p>🔍 Scanning chats for sensitive data...</p>
+        <p id="auditProgress" style="color: #888; font-size: 0.9rem;">0 scanned</p>
+        <button onclick="cancelAudit(); restoreViewState();" class="delete-btn" style="margin-top: 1rem;">Cancel</button>
+      </div>
+    `;
+  }
+
+  // Run full scan (cached chats will be skipped automatically)
+  await runAudit(({ scanned, total, findings: count }) => {
+    const progressEl = document.getElementById('auditProgress');
+    if (progressEl) {
+      progressEl.textContent = `${scanned} of ${total} chats scanned · ${count} findings`;
+    }
+  });
+
+  // Refresh UI with final results
+  findings = getCurrentFindings();
+  container.innerHTML = formatAuditHTML(findings);
+};
+
+window.showAuditFinding = async function(chatId, messageIndex) {
+  const chats = await getStoredChats();
+  const chatIndex = chats.findIndex(c => c.id === chatId);
+  if (chatIndex === -1) return;
+
+  await displayChat(chatIndex);
+
+  // Scroll to the message and highlight it
+  const container = elements.chatContainer();
+  const messages = container.querySelectorAll('.chat-message');
+  if (messages[messageIndex]) {
+    messages[messageIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    messages[messageIndex].style.animation = 'pulse 1s ease';
+    setTimeout(() => {
+      messages[messageIndex].style.animation = '';
+    }, 2000);
+  }
+};
+
+window.exportAuditResults = function() {
+  const findings = getCurrentFindings();
+  const json = exportFindingsAsJSON(findings);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `privacy-audit-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+window.clearAuditAndRescan = async function() {
+  await clearAndRescan();
+  window.showPrivacyAudit();
 };
 
 window.clearAllChats = async function(btn) {
