@@ -23,8 +23,15 @@ import {
   searchByTag
 } from './tags.js';
 import { calculateStats, formatStatsHTML } from './stats.js';
-import { runAudit, getCachedFindings, clearAndRescan, getCurrentFindings, cancelAudit } from './audit/index.js';
-import { formatAuditHTML, exportFindingsAsJSON } from './audit/audit-ui.js';
+import { runAudit, clearAndRescan, getCurrentFindings, cancelAudit } from './audit/index.js';
+import { formatAuditHTML, exportFindingsAsJSON, formatClassificationHTML, exportClassificationsAsJSON } from './audit/audit-ui.js';
+import {
+  runClassificationAudit,
+  getCachedClassifications,
+  clearClassificationAudit,
+  getCurrentClassifications,
+  cancelClassification
+} from './audit/classification-runner.js';
 import { escapeHtml } from './utils.js';
 import { 
   isSyncConfigured, 
@@ -1998,33 +2005,46 @@ window.showPrivacyAudit = async function() {
   // Save view state so Back button works
   saveViewState();
 
-  // Try to show cached results first, then rescan in background
-  let findings = await getCachedFindings();
-  const hasCache = findings.length > 0;
+  // Try to show cached classifications first, then re-run in background
+  let classifications = await getCachedClassifications();
+  const hasCache = classifications.length > 0;
 
   if (hasCache) {
-    container.innerHTML = formatAuditHTML(findings);
+    container.innerHTML = formatClassificationHTML(classifications);
   } else {
     container.innerHTML = `
       <div style="text-align: center; padding: 3rem;">
-        <p>🔍 Scanning chats for sensitive data...</p>
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
+        <p>Running privacy audit on your conversations...</p>
         <p id="auditProgress" style="color: #888; font-size: 0.9rem;">0 scanned</p>
-        <button onclick="cancelAudit(); restoreViewState();" class="delete-btn" style="margin-top: 1rem;">Cancel</button>
+        <button onclick="cancelAudit(); cancelClassification(); restoreViewState();" class="delete-btn" style="margin-top: 1rem;">Cancel</button>
       </div>
     `;
   }
 
-  // Run full scan (cached chats will be skipped automatically)
-  await runAudit(({ scanned, total, findings: count }) => {
+  // Run both the sensitive-data scan and the classification audit in parallel.
+  // The sensitive-data scan keeps exportAuditResults working; the classification
+  // audit provides the user-facing recommendation dashboard.
+  const progressCallback = ({ scanned, total }) => {
     const progressEl = document.getElementById('auditProgress');
     if (progressEl) {
-      progressEl.textContent = `${scanned} of ${total} chats scanned · ${count} findings`;
+      progressEl.textContent = `${scanned} of ${total} conversations analyzed`;
     }
-  });
+  };
 
-  // Refresh UI with final results
-  findings = getCurrentFindings();
-  container.innerHTML = formatAuditHTML(findings);
+  await Promise.all([
+    runAudit(({ scanned, total, findings: count }) => {
+      const progressEl = document.getElementById('auditProgress');
+      if (progressEl && !progressEl.textContent.includes('conversations analyzed')) {
+        progressEl.textContent = `${scanned} of ${total} chats scanned · ${count} findings`;
+      }
+    }),
+    runClassificationAudit(progressCallback)
+  ]);
+
+  // Refresh UI with final classification results
+  classifications = getCurrentClassifications();
+  container.innerHTML = formatClassificationHTML(classifications);
 };
 
 window.showAuditFinding = async function(chatId, messageIndex) {
@@ -2053,19 +2073,48 @@ window.exportAuditResults = function() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `privacy-audit-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `privacy-audit-findings-${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
 
+window.exportClassificationResults = function() {
+  const classifications = getCurrentClassifications();
+  const json = exportClassificationsAsJSON(classifications);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `privacy-audit-classifications-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+window.openClassifiedChat = async function(conversationId) {
+  if (!conversationId) return;
+  const chats = await getStoredChats();
+  const chatIndex = chats.findIndex(c => c.id === conversationId);
+  if (chatIndex === -1) return;
+  await displayChat(chatIndex);
+};
+
+window.scrollToRecSection = function(rec) {
+  const el = document.getElementById(`rec-section-${rec}`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 window.cancelAudit = function() {
   cancelAudit();
+  cancelClassification();
 };
 
 window.clearAuditAndRescan = async function() {
   await clearAndRescan();
+  await clearClassificationAudit();
   window.showPrivacyAudit();
 };
 
